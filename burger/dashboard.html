@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard da Lanchonete</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../css/dashboard.css">
+</head>
+
+<body class="bg-gray-100">
+    <div class="container mx-auto p-4">
+        <h1 class="text-3xl font-bold mb-6">Dashboard da Lanchonete</h1>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-xl font-semibold mb-4">Estatísticas Gerais</h2>
+                <p><strong>Lanches Vendidos:</strong> <span id="totalSnacks">0</span></p>
+                <p><strong>Receita Total (R$):</strong> <span id="totalRevenue">0.00</span></p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-xl font-semibold mb-4">Receita por Período (R$)</h2>
+                <p><strong>Diária (25/07/2025):</strong> <span id="dailyRevenue">0.00</span></p>
+                <p><strong>Semanal (Semana Atual):</strong> <span id="weeklyRevenue">0.00</span></p>
+                <p><strong>Mensal (Julho 2025):</strong> <span id="monthlyRevenue">0.00</span></p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-xl font-semibold mb-4">Dias de Pico</h2>
+                <p><strong>Dia mais movimentado:</strong> <span id="peakDay">N/A</span></p>
+                <p><strong>Número de Pedidos:</strong> <span id="peakOrders">0</span></p>
+            </div>
+        </div>
+        <div class="mt-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h2 class="text-xl font-semibold mb-4">Distribuição de Vendas por Item</h2>
+                    <canvas id="itemChart"></canvas>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h2 class="text-xl font-semibold mb-4">Distribuição por Método de Pagamento</h2>
+                    <canvas id="paymentChart"></canvas>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h2 class="text-xl font-semibold mb-4">Receita por Dia</h2>
+                    <canvas id="dailyChart"></canvas>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h2 class="text-xl font-semibold mb-4">Receita por Semana</h2>
+                    <canvas id="weeklyChart"></canvas>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h2 class="text-xl font-semibold mb-4">Receita por Mês</h2>
+                    <canvas id="monthlyChart"></canvas>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h2 class="text-xl font-semibold mb-4">Receita por Ano</h2>
+                    <canvas id="yearlyChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <script src="../js/dashboard.js"></script>
+</body>
+
+</html>

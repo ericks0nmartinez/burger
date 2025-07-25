@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fazer Pedido - Garçom</title>
+    <link rel="stylesheet" href="../css/waiter-order.css">
+</head>
+
+<body>
+    <h1>Fazer Pedido</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>Imagem</th>
+                <th>Nome</th>
+                <th>Preço</th>
+                <th>Quantidade</th>
+            </tr>
+        </thead>
+        <tbody id="productTable"></tbody>
+    </table>
+    <button id="placeOrderBtn" class="bg-blue-500 text-white px-4 py-2 rounded" disabled>Fazer Pedido</button>
+
+    <div id="productModal" class="hidden">
+        <div>
+            <!-- Modal content will be populated by JS -->
+        </div>
+    </div>
+
+    <script src="../js/waiter-order.js"></script>
+</body>
+
+</html>

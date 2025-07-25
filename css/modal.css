@@ -1,0 +1,22 @@
+/* Modal-specific styles */
+#productModal {
+    z-index: 1000;
+}
+
+#productModal .bg-white {
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+#productModal input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    outline: none;
+}
+
+#productModal input:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}

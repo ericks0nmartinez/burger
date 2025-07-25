@@ -1,0 +1,38 @@
+/* Tailwind CSS is included via CDN in admin.html, so we add custom styles if needed */
+body {
+    font-family: 'Inter', sans-serif;
+}
+
+/* Ensure table images are exactly 25x25 pixels */
+table img {
+    width: 25px;
+    height: 25px;
+    object-fit: cover;
+    max-width: 25px;
+    max-height: 25px;
+    border-radius: 25%;
+}
+
+/* Additional custom styles for consistency */
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th,
+td {
+    text-align: left;
+    padding: 12px;
+}
+
+thead {
+    background-color: #f9fafb;
+}
+
+tbody tr:hover {
+    background-color: #f3f4f6;
+}
+
+button {
+    transition: background-color 0.2s;
+}

@@ -1,0 +1,42 @@
+[
+    {
+        "id": 1,
+        "name": "Burger Clássico",
+        "price": 20.00,
+        "description": "Hambúrguer com queijo",
+        "image": "../img/519465720_17844785781531324_5202454483021855247_n.webp",
+        "status": "Inativo"
+    },
+    {
+        "id": 2,
+        "name": "Burger Bacon",
+        "price": 25.00,
+        "description": "Hambúrguer com bacon e queijo",
+        "image": "../img/519465720_17844785781531324_5202454483021855247_n.webp",
+        "status": "Ativo"
+    },
+    {
+        "id": 3,
+        "name": "Burger Vegano",
+        "price": 22.00,
+        "description": "Hambúrguer de grão de bico",
+        "image": "../img/519465720_17844785781531324_5202454483021855247_n.webp",
+        "status": "Ativo"
+    },
+    {
+        "id": 4,
+        "name": "Burger Duplo",
+        "price": 30.00,
+        "description": "Dois hambúrgueres com queijo",
+        "image": "../img/519465720_17844785781531324_5202454483021855247_n.webp",
+        "status": "Ativo"
+    },
+    {
+        "id": 5,
+        "name": "Burger Picante",
+        "price": 23.00,
+        "description": "Hambúrguer com pimenta",
+        "image": "../img/519465720_17844785781531324_5202454483021855247_n.webp",
+        "status": "Ativo"
+    }
+]
