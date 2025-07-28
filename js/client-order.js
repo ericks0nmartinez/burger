@@ -3,7 +3,7 @@ let quantities = {};
 
 async function fetchProducts() {
     try {
-        const response = await fetch('/utils/products.json');
+        const response = await fetch('../utils/products.json');
         if (!response.ok) {
             throw new Error(`Erro ao carregar produtos: ${response.status} - ${response.statusText}`);
         }
