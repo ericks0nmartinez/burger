@@ -1,11 +1,9 @@
-// Track modal readiness and queued actions
 let isModalReady = false;
 let modalQueue = [];
 
-// Load modal HTML into the modal container
 async function loadModal() {
     try {
-        const modalPaths = ['/components/modal.html', '/burger/components/modal.html']; // Try both paths
+        const modalPaths = ['/components/modal.html', '/burger/components/modal.html'];
         let response;
         for (const path of modalPaths) {
             console.log('Trying to fetch modal from:', new URL(path, window.location.origin).href);
@@ -16,7 +14,6 @@ async function loadModal() {
         const modalHtml = await response.text();
         document.getElementById('modalContainer').innerHTML = modalHtml;
         isModalReady = true;
-        // Process any queued modal openings
         modalQueue.forEach(config => openModalNow(config));
         modalQueue = [];
     } catch (error) {
@@ -25,10 +22,8 @@ async function loadModal() {
     }
 }
 
-// Initialize modal loading
 loadModal();
 
-// Open modal with dynamic content (wrapper to handle readiness)
 function openModal(config) {
     if (isModalReady) {
         openModalNow(config);
@@ -37,7 +32,6 @@ function openModal(config) {
     }
 }
 
-// Internal function to open modal
 function openModalNow(config) {
     const { title, description, fields, onSave, initialValues, customElements } = config || {};
     const modal = document.getElementById('productModal');
@@ -47,46 +41,17 @@ function openModalNow(config) {
     const saveBtn = document.getElementById('saveBtn');
     const cancelBtn = document.getElementById('cancelBtn');
 
-    // Verify elements exist
     if (!modal || !modalTitle || !modalDescription || !modalFields || !saveBtn || !cancelBtn) {
         console.error('Modal elements not found in DOM');
         alert('Erro ao abrir o modal. Tente novamente.');
         return;
     }
 
-    // Set title and description
     modalTitle.textContent = title || 'Título do Modal';
     modalDescription.textContent = description || '';
 
-    // Clear previous fields
     modalFields.innerHTML = '';
 
-    // Generate fields dynamically
-    fields.forEach(field => {
-        const fieldDiv = document.createElement('div');
-        fieldDiv.className = 'mb-4';
-        if (field.type === 'select') {
-            fieldDiv.innerHTML = `
-                <label for="${field.name}" class="block text-sm font-medium text-gray-700">${field.name}</label>
-                <select id="${field.name}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
-                    ${field.options.map(opt => `<option value="${opt}">${opt}</option>`).join('')}
-                </select>
-            `;
-        } else {
-            fieldDiv.innerHTML = `
-                <label for="${field.name}" class="block text-sm font-medium text-gray-700">${field.name}</label>
-                <input type="${field.type}" id="${field.name}" placeholder="${field.placeholder || ''}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
-            `;
-        }
-        modalFields.appendChild(fieldDiv);
-        // Set initial values if provided (for edit mode)
-        if (initialValues && initialValues[field.name] !== undefined) {
-            const input = document.getElementById(field.name);
-            input.value = initialValues[field.name];
-        }
-    });
-
-    // Add custom elements if provided
     if (customElements) {
         customElements.forEach(element => {
             const elemDiv = document.createElement('div');
@@ -103,8 +68,12 @@ function openModalNow(config) {
                     document.getElementById(element.id).addEventListener('change', element.onChange);
                 }
             } else if (element.type === 'radioGroup') {
+                const label = document.createElement('p');
+                label.className = 'text-sm font-medium text-gray-700';
+                label.textContent = element.label;
                 const radioGroup = document.createElement('div');
                 radioGroup.className = 'ml-6';
+                radioGroup.id = 'pickupTimeGroup';
                 element.options.forEach(opt => {
                     const radioDiv = document.createElement('div');
                     radioDiv.className = 'flex items-center mb-2';
@@ -114,7 +83,7 @@ function openModalNow(config) {
                     `;
                     radioGroup.appendChild(radioDiv);
                 });
-                elemDiv.innerHTML = `<p class="text-sm font-medium text-gray-700">${element.label}</p>`;
+                elemDiv.appendChild(label);
                 elemDiv.appendChild(radioGroup);
                 modalFields.appendChild(elemDiv);
             } else if (element.type === 'conditionalInputs') {
@@ -130,17 +99,40 @@ function openModalNow(config) {
                     `;
                     inputGroup.appendChild(fieldDiv);
                 });
-                elemDiv.innerHTML = '';
                 elemDiv.appendChild(inputGroup);
                 modalFields.appendChild(elemDiv);
             }
         });
     }
 
-    // Show modal
+    // Move fields append after customElements
+    if (fields) {
+        fields.forEach(field => {
+            const fieldDiv = document.createElement('div');
+            fieldDiv.className = 'mb-4';
+            if (field.type === 'select') {
+                fieldDiv.innerHTML = `
+                    <label for="${field.name}" class="block text-sm font-medium text-gray-700">${field.name}</label>
+                    <select id="${field.name}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                        ${field.options.map(opt => `<option value="${opt}">${opt}</option>`).join('')}
+                    </select>
+                `;
+            } else {
+                fieldDiv.innerHTML = `
+                    <label for="${field.name}" class="block text-sm font-medium text-gray-700">${field.name}</label>
+                    <input type="${field.type}" id="${field.name}" placeholder="${field.placeholder || ''}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                `;
+            }
+            modalFields.appendChild(fieldDiv);
+            if (initialValues && initialValues[field.name] !== undefined) {
+                const input = document.getElementById(field.name);
+                input.value = initialValues[field.name];
+            }
+        });
+    }
+
     modal.classList.remove('hidden');
 
-    // Save button handler
     saveBtn.onclick = () => {
         const values = fields.reduce((acc, field) => {
             const input = document.getElementById(field.name);
@@ -155,7 +147,6 @@ function openModalNow(config) {
         modal.classList.add('hidden');
     };
 
-    // Cancel button handler
     cancelBtn.onclick = () => {
         modal.classList.add('hidden');
     };

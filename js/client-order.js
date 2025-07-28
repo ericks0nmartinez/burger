@@ -3,7 +3,7 @@ let quantities = {};
 
 async function fetchProducts() {
     try {
-        const response = await fetch('../utils/products.json');
+        const response = await fetch('/utils/products.json');
         if (!response.ok) {
             throw new Error(`Erro ao carregar produtos: ${response.status} - ${response.statusText}`);
         }
@@ -13,11 +13,11 @@ async function fetchProducts() {
         }
         products = data.map(p => ({ ...p, status: p.status || 'Ativo' }));
         renderProducts();
-        renderClientOrder(); // Render initial order on load
+        renderClientOrder();
     } catch (error) {
         console.error('Erro:', error);
         alert('Não foi possível carregar os produtos. Verifique o arquivo products.json.');
-        products = []; // Fallback to empty array
+        products = [];
         renderProducts();
     }
 }
@@ -54,111 +54,6 @@ function updateOrderButton() {
     placeOrderBtn.disabled = Object.values(quantities).every(q => q === 0);
 }
 
-// Define openModal function
-function openModal({ title, description, fields, customElements, onSave, initialValues }) {
-    const modal = document.getElementById('productModal');
-    const modalContent = modal.querySelector('div');
-    modalContent.innerHTML = `
-        <h2 class="text-xl font-bold mb-2">${title}</h2>
-        <p class="mb-4">${description}</p>
-        ${fields.map(field => `
-            <div class="mb-2">
-                <label class="block">${field.placeholder}</label>
-                ${field.type === 'select' ? `
-                    <select name="${field.name}" id="${field.name}" class="border p-1 w-full">
-                        ${field.options.map(option => `<option value="${option}">${option}</option>`).join('')}
-                    </select>
-                ` : `
-                    <input type="${field.type}" name="${field.name}" id="${field.name}" placeholder="${field.placeholder}" value="${initialValues[field.name] || ''}" class="border p-1 w-full">
-                `}
-            </div>
-        `).join('')}
-        ${customElements.map(element => {
-        if (element.type === 'checkbox') {
-            return `
-                    <div class="mb-2">
-                        <input type="checkbox" id="${element.id}" ${initialValues[element.id] ? 'checked' : ''} onchange="${element.onChange.toString().replace(/function\s*\(\)\s*{/, '').replace(/}$/, '')}">
-                        <label for="${element.id}">${element.label}</label>
-                    </div>
-                `;
-        } else if (element.type === 'radioGroup') {
-            return `
-                    <div class="mb-2">
-                        <label>${element.label}</label>
-                        ${element.options.map(option => `
-                            <div>
-                                <input type="radio" name="${element.name}" id="${element.name}_${option}" value="${option}" ${initialValues[element.name] === option ? 'checked' : ''}>
-                                <label for="${element.name}_${option}">${option}</label>
-                            </div>
-                        `).join('')}
-                    </div>
-                `;
-        } else if (element.type === 'conditionalInputs') {
-            return `
-                    <div id="${element.id}" class="mb-2 ${initialValues.delivery ? '' : 'hidden'}">
-                        ${element.fields.map(field => `
-                            <div>
-                                <label>${field.placeholder}</label>
-                                <input type="${field.type}" id="${field.name}" name="${field.name}" placeholder="${field.placeholder}" class="border p-1 w-full">
-                            </div>
-                        `).join('')}
-                    </div>
-                `;
-        }
-        return '';
-    }).join('')}
-        <button onclick="saveModal()" class="bg-blue-500 text-white px-2 py-1 rounded mt-4">Salvar</button>
-        <button onclick="closeModal()" class="bg-gray-500 text-white px-2 py-1 rounded mt-4 ml-2">Cancelar</button>
-    `;
-
-    window.currentModalValues = {};
-    window.currentModalOnSave = onSave;
-
-    fields.forEach(field => {
-        const input = modalContent.querySelector(`#${field.name}`);
-        if (input) input.addEventListener('change', (e) => {
-            window.currentModalValues[field.name] = e.target.value;
-        });
-    });
-    customElements.forEach(element => {
-        if (element.type === 'checkbox') {
-            const checkbox = modalContent.querySelector(`#${element.id}`);
-            checkbox.addEventListener('change', element.onChange);
-            window.currentModalValues[element.id] = checkbox.checked;
-        } else if (element.type === 'radioGroup') {
-            modalContent.querySelectorAll(`input[name="${element.name}"]`).forEach(radio => {
-                radio.addEventListener('change', (e) => {
-                    window.currentModalValues[element.name] = e.target.value;
-                });
-            });
-        } else if (element.type === 'conditionalInputs') {
-            element.fields.forEach(field => {
-                const input = modalContent.querySelector(`#${field.name}`);
-                if (input) input.addEventListener('change', (e) => {
-                    window.currentModalValues[field.name] = e.target.value;
-                });
-            });
-        }
-    });
-
-    modal.classList.remove('hidden');
-}
-
-function saveModal() {
-    if (window.currentModalOnSave) {
-        window.currentModalOnSave(window.currentModalValues);
-    }
-    closeModal();
-}
-
-function closeModal() {
-    const modal = document.getElementById('productModal');
-    modal.classList.add('hidden');
-    modal.querySelector('div').innerHTML = '';
-    window.currentModalValues = {};
-    window.currentModalOnSave = null;
-}
-
 function openOrderModal() {
     openModal({
         title: 'Confirmar Pedido',
@@ -177,12 +72,13 @@ function openOrderModal() {
                     const isDelivery = this.checked;
                     const pickupGroup = document.getElementById('pickupTimeGroup');
                     const addressGroup = document.getElementById('addressGroup');
+                    const pickupDiv = pickupGroup ? pickupGroup.parentElement : null; // Get the parent div
                     if (isDelivery) {
-                        pickupGroup.classList.add('hidden');
-                        addressGroup.classList.remove('hidden');
+                        if (pickupDiv) pickupDiv.classList.add('hidden');
+                        if (addressGroup) addressGroup.classList.remove('hidden');
                     } else {
-                        pickupGroup.classList.remove('hidden');
-                        addressGroup.classList.add('hidden');
+                        if (pickupDiv) pickupDiv.classList.remove('hidden');
+                        if (addressGroup) addressGroup.classList.add('hidden');
                     }
                 }
             },
@@ -190,8 +86,7 @@ function openOrderModal() {
                 type: 'radioGroup',
                 name: 'pickupTime',
                 label: 'Horário de Retirada (selecione uma opção)',
-                options: ['30 min', '60 min', '90 min'],
-                id: 'pickupTimeGroup'
+                options: ['30 min', '60 min', '90 min']
             },
             {
                 type: 'conditionalInputs',
@@ -199,36 +94,37 @@ function openOrderModal() {
                 fields: [
                     { name: 'address', type: 'text', placeholder: 'Endereço' },
                     { name: 'number', type: 'text', placeholder: 'Número' },
-                    { name: 'neighborhood', type: 'text', placeholder: 'Bairro' }
+                    { name: 'neighborhood', type: 'text', placeholder: 'Bairro' },
+                    { name: 'reference', type: 'text', placeholder: 'Referência' }
                 ]
             }
         ],
         onSave: (values) => {
             const isDelivery = document.getElementById('delivery').checked;
             const pickupTime = document.querySelector('input[name="pickupTime"]:checked')?.value;
-            const onclient = "true"
+            const onclient = "true";
             const address = isDelivery ? {
                 address: document.getElementById('address').value,
                 number: document.getElementById('number').value,
-                neighborhood: document.getElementById('neighborhood').value
+                neighborhood: document.getElementById('neighborhood').value,
+                reference: document.getElementById('reference').value
             } : null;
             if (!validateOrderForm(isDelivery, pickupTime, address)) return;
             saveOrder(values, isDelivery, pickupTime, address, onclient);
         },
         initialValues: {}
     });
-    document.getElementById('addressGroup').classList.add('hidden');
 }
 
 function validateOrderForm(isDelivery, pickupTime, address) {
     const name = document.getElementById('name');
     const phone = document.getElementById('phone');
     const paymentMethod = document.getElementById('paymentMethod');
-    if (!name.value || !phone.value || !paymentMethod.value) {
+    if (!name.value || !phone.value || paymentMethod.value === 'Selecione') {
         alert('Preencha todos os campos obrigatórios.');
         return false;
     }
-    if (!document.getElementById('delivery').checked && !pickupTime) {
+    if (!isDelivery && !pickupTime) {
         alert('Selecione um horário de retirada.');
         return false;
     }
@@ -256,9 +152,7 @@ function saveOrder(values, isDelivery, pickupTime, address, onclient) {
     let orders = JSON.parse(localStorage.getItem('orders') || '[]');
     orders.push(order);
     localStorage.setItem('orders', JSON.stringify(orders));
-
     localStorage.setItem('order-client', JSON.stringify(order));
-
     quantities = {};
     renderProducts();
     renderClientOrder();
@@ -271,20 +165,20 @@ function renderClientOrder() {
         clientOrderDiv.innerHTML = '<p>Nenhum pedido encontrado para você.</p>';
         return;
     }
-
     clientOrderDiv.innerHTML = `
         <h2>Seu Pedido</h2>
         <p><strong>ID:</strong> ${clientOrder.id}</p>
         <p><strong>Horário:</strong> ${new Date(clientOrder.time).toLocaleString('pt-BR')}</p>
         <p><strong>Tipo:</strong> ${clientOrder.delivery ? 'Entrega' : 'Retirada'}${clientOrder.pickupTime ? ` (${clientOrder.pickupTime})` : ''}</p>
-        ${clientOrder.address ? `<p><strong>Endereço:</strong> ${clientOrder.address.address}, ${clientOrder.address.number}, ${clientOrder.address.neighborhood}</p>` : ''}
+        ${clientOrder.address ? `
+            <p><strong>Endereço:</strong> ${clientOrder.address.address}, ${clientOrder.address.number}, ${clientOrder.address.neighborhood}${clientOrder.address.reference ? `, Ref: ${clientOrder.address.reference}` : ''}</p>
+        ` : ''}
         <p><strong>Pagamento:</strong> ${clientOrder.paymentMethod}</p>
         <p><strong>Itens:</strong> ${clientOrder.items.map(i => `${products.find(p => p.id === i.id)?.name || 'Produto não encontrado'} (x${i.qty})`).join(', ') || 'N/A'}</p>
         <p><strong>Status:</strong> ${clientOrder.status}</p>
     `;
 }
 
-// Listen for admin updates
 const bc = new BroadcastChannel('order_updates');
 bc.onmessage = (event) => {
     if (event.data.type === 'statusUpdate') {
