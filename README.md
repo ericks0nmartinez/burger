@@ -26,6 +26,8 @@ admin-control
 * mostrar o contador de tempo ja na tela e não só apos mudar de status
 
 client-order
-* Ajustar formulario para ocultar o tempo de retirada quando cliente marcar "Entrega (se não marcado, será retirada)"  e trocar só para "Entrega"
+* (feito) Ajustar formulario para ocultar o tempo de retirada quando cliente marcar "Entrega (se não marcado, será retirada)"  e trocar só para "Entrega"
+
+* Calcular endereço para mostrar total do preço com a taxa
 
 * Quando passar  mouse ou clicar na imagem deve expandir a imagem do lanche
