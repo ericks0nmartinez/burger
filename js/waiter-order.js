@@ -1,6 +1,21 @@
 let products = [];
 let quantities = {};
-const DELIVERY_FEE = 10.00; // Fixed delivery fee, aligned with admin-order.js
+let selectedTable = null;
+const DELIVERY_FEE = 10.00;
+const TABLE_COUNT = 6;
+
+function initializeTables() {
+    const tables = JSON.parse(localStorage.getItem('tables') || '[]');
+    if (tables.length !== TABLE_COUNT) {
+        const newTables = Array.from({ length: TABLE_COUNT }, (_, i) => ({
+            id: i + 1,
+            occupied: false
+        }));
+        localStorage.setItem('tables', JSON.stringify(newTables));
+        return newTables;
+    }
+    return tables;
+}
 
 async function fetchProducts() {
     try {
@@ -22,8 +37,37 @@ async function fetchProducts() {
     }
 }
 
+function renderTableCards() {
+    const tableCards = document.getElementById('tableCards');
+    const tables = initializeTables();
+    const orders = JSON.parse(localStorage.getItem('orders') || '[]');
+    tableCards.innerHTML = '';
+    tables.forEach(table => {
+        const card = document.createElement('div');
+        // Check if the table has any orders with payment: true
+        const hasPaidOrder = orders.some(order => order.tableNumber === table.id.toString() && order.payment === true);
+        // Apply bg-green-500 for paid orders, otherwise use occupied or unoccupied color
+        card.className = `w-[35px] h-[35px] flex items-center justify-center text-white rounded cursor-pointer ${hasPaidOrder ? 'bg-green-500' : table.occupied ? 'bg-red-500' : 'bg-green-300'
+            }`;
+        card.textContent = table.id;
+        card.addEventListener('click', () => {
+            if (table.occupied) {
+                openReceiveOrderModal(table.id);
+            } else {
+                selectedTable = table.id;
+                table.occupied = true;
+                localStorage.setItem('tables', JSON.stringify(tables));
+                renderTableCards();
+                document.getElementById('productSection').classList.remove('hidden');
+                fetchProducts();
+            }
+        });
+        tableCards.appendChild(card);
+    });
+}
+
 function renderProducts() {
-    const tableBody = document.getElementById('productTable');
+    const tableBody = document.getElementById('productTable').querySelector('tbody');
     tableBody.innerHTML = '';
     products.forEach(product => {
         quantities[product.id] = quantities[product.id] || 0;
@@ -55,41 +99,117 @@ function updateOrderButton() {
 }
 
 function openOrderModal() {
-    openModal({
-        title: 'Confirmar Pedido',
-        description: 'Preencha os dados do pedido.',
-        fields: [
-            { name: 'name', type: 'text', placeholder: 'Nome do Cliente' },
-            { name: 'phone', type: 'tel', placeholder: 'Telefone' },
-            { name: 'tableNumber', type: 'text', placeholder: 'Número da Mesa' },
-            { name: 'paymentMethod', type: 'select', options: ['Selecione', 'Dinheiro', 'Cartão Débito', 'Cartão Crédito'] }
-        ],
-        customElements: [
-            {
-                type: 'checkbox',
-                id: 'isPackaged',
-                label: 'Embalar (para viagem)',
-                onChange: function () {
-                    window.currentModalValues.isPackaged = this.checked;
+    if (!selectedTable) {
+        alert('Selecione uma mesa antes de fazer o pedido.');
+        return;
+    }
+    const itemTotal = Object.entries(quantities).reduce((sum, [id, qty]) => {
+        if (qty > 0) {
+            const product = products.find(p => p.id === parseInt(id));
+            return sum + (product ? product.price * qty : 0);
+        }
+        return sum;
+    }, 0);
+
+    try {
+        openModal({
+            title: 'Confirmar Pedido',
+            description: `Preencha os dados do pedido para a Mesa ${selectedTable}. Valor dos itens: R$ ${itemTotal.toFixed(2)}`,
+            fields: [
+                { name: 'name', type: 'text', placeholder: 'Nome do Cliente (opcional)' },
+                { name: 'phone', type: 'tel', placeholder: 'Telefone (opcional)' },
+                { name: 'paymentMethod', type: 'select', options: ['Selecione', 'Dinheiro', 'Cartão Débito', 'Cartão Crédito'] }
+            ],
+            customElements: [
+                {
+                    type: 'checkbox',
+                    id: 'isPackaged',
+                    label: 'Embalar (para viagem)',
+                    onChange: function () {
+                        const isPackaged = this.checked;
+                        const totalDisplay = document.getElementById('orderTotalDisplay');
+                        if (totalDisplay) {
+                            totalDisplay.innerHTML = `
+                                <p><strong>Valor dos Itens:</strong> R$ ${itemTotal.toFixed(2)}</p>
+                                ${isPackaged ? `<p><strong>Taxa de Entrega:</strong> R$ ${DELIVERY_FEE.toFixed(2)}</p>` : ''}
+                                <p><strong>Valor Total:</strong> R$ ${(itemTotal + (isPackaged ? DELIVERY_FEE : 0)).toFixed(2)}</p>
+                            `;
+                        }
+                    }
+                },
+                {
+                    type: 'custom',
+                    id: 'orderTotalDisplay',
+                    html: `
+                        <div id="orderTotalDisplay" class="mb-2">
+                            <p><strong>Valor dos Itens:</strong> R$ ${itemTotal.toFixed(2)}</p>
+                            <p><strong>Valor Total:</strong> R$ ${itemTotal.toFixed(2)}</p>
+                        </div>
+                    `
                 }
-            }
-        ],
-        onSave: (values) => {
-            const isPackaged = window.currentModalValues.isPackaged || false;
-            const onclient = "false";
-            if (!validateOrderForm(values, isPackaged)) return;
-            saveOrder(values, isPackaged, onclient);
-        },
-        initialValues: {}
-    });
+            ],
+            onSave: (values) => {
+                const isPackaged = document.getElementById('isPackaged').checked;
+                const onclient = "false";
+                saveOrder(values, isPackaged, onclient);
+            },
+            initialValues: {}
+        });
+    } catch (error) {
+        console.error('Erro ao abrir o modal:', error);
+        alert('Não foi possível abrir o modal. Verifique o console para mais detalhes.');
+    }
 }
 
-function validateOrderForm(values, isPackaged) {
-    if (!values.name || !values.phone || !values.tableNumber || values.paymentMethod === 'Selecione') {
-        alert('Preencha todos os campos obrigatórios.');
-        return false;
+function openReceiveOrderModal(tableId) {
+    const orders = JSON.parse(localStorage.getItem('orders') || '[]');
+    const tableOrders = orders.filter(order => order.tableNumber === tableId.toString());
+    if (tableOrders.length === 0) {
+        alert(`Nenhum pedido encontrado para a Mesa ${tableId}.`);
+        return;
     }
-    return true;
+    const order = tableOrders[0];
+    const itemTotal = order.total || 0;
+    const totalWithDelivery = (itemTotal + (order.deliveryFee || 0)).toFixed(2);
+
+    try {
+        openModal({
+            title: `Confirmar Recebimento - Mesa ${tableId}`,
+            description: `
+                Confirme o recebimento do pedido para a Mesa ${tableId}.
+                <br><strong>Itens:</strong> ${order.items.map(i => `${products.find(p => p.id === i.id)?.name || 'Produto não encontrado'} (x${i.qty})`).join(', ')}
+                <br><strong>Valor dos Itens:</strong> R$ ${itemTotal.toFixed(2)}
+                ${order.deliveryFee ? `<br><strong>Taxa de Entrega:</strong> R$ ${order.deliveryFee.toFixed(2)}` : ''}
+                <br><strong>Valor Total:</strong> R$ ${totalWithDelivery}
+                <br><strong>Forma de Pagamento:</strong> ${order.paymentMethod}
+            `,
+            fields: [],
+            customElements: [],
+            onSave: () => {
+                if (order.statusHistory[order.status] && !order.statusHistory[order.status].end) {
+                    order.statusHistory[order.status].end = new Date().toISOString().replace('Z', '-04:00');
+                }
+                order.receivedTime = new Date().toISOString().replace('Z', '-04:00');
+                order.payment = true; // Set payment to true when received
+                order.statusHistory['Recebido'] = { start: order.receivedTime, end: null }; // Keep Recebido as current status
+
+                // Notify admin-order.js of payment update
+                const bc = new BroadcastChannel('order_updates');
+                bc.postMessage({
+                    type: 'receivedOrder',
+                    orderId: order.id,
+                    tableNumber: tableId
+                });
+
+                localStorage.setItem('orders', JSON.stringify(orders));
+                renderTableCards();
+            },
+            initialValues: {}
+        });
+    } catch (error) {
+        console.error('Erro ao abrir o modal de recebimento:', error);
+        alert('Não foi possível abrir o modal de recebimento. Verifique o console para mais detalhes.');
+    }
 }
 
 function saveOrder(values, isPackaged, onclient) {
@@ -103,95 +223,79 @@ function saveOrder(values, isPackaged, onclient) {
     const order = {
         id: Date.now(),
         time: new Date().toISOString().replace('Z', '-04:00'),
-        name: values.name,
-        phone: values.phone,
+        name: values.name || 'Sem nome',
+        phone: values.phone || 'Sem telefone',
         onclient,
-        tableNumber: values.tableNumber,
-        paymentMethod: values.paymentMethod,
-        delivery: isPackaged, // Treat isPackaged as delivery for consistency
-        pickupTime: isPackaged ? null : '30 min', // Default pickup time for non-delivery
-        address: null, // No address for waiter orders
+        tableNumber: selectedTable.toString(),
+        paymentMethod: values.paymentMethod === 'Selecione' ? 'Não informado' : values.paymentMethod,
+        delivery: isPackaged,
+        pickupTime: isPackaged ? null : '30 min',
+        address: null,
         items: Object.entries(quantities).filter(([_, qty]) => qty > 0).map(([id, qty]) => ({ id: parseInt(id), qty })),
         total,
         deliveryFee: isPackaged ? DELIVERY_FEE : 0,
-        status: 'Aguardando'
+        status: 'Aguardando',
+        payment: false, // Default payment status
+        statusHistory: { Aguardando: { start: new Date().toISOString().replace('Z', '-04:00'), end: null } }
     };
     let orders = JSON.parse(localStorage.getItem('orders') || '[]');
     orders.push(order);
     localStorage.setItem('orders', JSON.stringify(orders));
-
-    // Reset quantities and refresh UI
+    const bc = new BroadcastChannel('order_updates');
+    bc.postMessage({ type: 'newOrder', orderId: order.id });
     quantities = {};
     renderProducts();
+    document.getElementById('productSection').classList.add('hidden');
+    selectedTable = null;
 }
 
-function openModal({ title, description, fields, customElements, onSave, initialValues }) {
-    const modal = document.getElementById('productModal');
-    const modalContent = modal.querySelector('div');
-    modalContent.innerHTML = `
-        <h2 class="text-xl font-bold mb-2">${title}</h2>
-        <p class="mb-4">${description}</p>
-        ${fields.map(field => `
-            <div class="mb-2">
-                <label class="block">${field.placeholder}</label>
-                ${field.type === 'select' ? `
-                    <select name="${field.name}" id="${field.name}" class="border p-1 w-full">
-                        ${field.options.map(option => `<option value="${option}">${option}</option>`).join('')}
-                    </select>
-                ` : `
-                    <input type="${field.type}" name="${field.name}" id="${field.name}" placeholder="${field.placeholder}" value="${initialValues[field.name] || ''}" class="border p-1 w-full">
-                `}
-            </div>
-        `).join('')}
-        ${customElements.map(element => {
-        if (element.type === 'checkbox') {
-            return `
-                    <div class="mb-2">
-                        <input type="checkbox" id="${element.id}" ${initialValues[element.id] ? 'checked' : ''} onchange="${element.onChange.toString().replace(/function\s*\(\)\s*{/, '').replace(/}$/, '')}">
-                        <label for="${element.id}">${element.label}</label>
-                    </div>
-                `;
+document.getElementById('placeOrderBtn').addEventListener('click', () => {
+    console.log('Botão Fazer Pedido clicado');
+    openOrderModal();
+});
+
+// Add BroadcastChannel listener for received orders or status updates
+const bc = new BroadcastChannel('order_updates');
+bc.onmessage = (event) => {
+    if (event.data.type === 'receivedOrder') {
+        const { orderId, tableNumber } = event.data;
+        const orders = JSON.parse(localStorage.getItem('orders') || '[]');
+        const order = orders.find(o => o.id === orderId);
+        if (order) {
+            order.payment = true;
+            order.receivedTime = new Date().toISOString().replace('Z', '-04:00');
+            order.statusHistory['Recebido'] = { start: order.receivedTime, end: null };
+            localStorage.setItem('orders', JSON.stringify(orders));
         }
-        return '';
-    }).join('')}
-        <button onclick="saveModal()" class="bg-blue-500 text-white px-2 py-1 rounded mt-4">Salvar</button>
-        <button onclick="closeModal()" class="bg-gray-500 text-white px-2 py-1 rounded mt-4 ml-2">Cancelar</button>
-    `;
-
-    window.currentModalValues = {};
-    window.currentModalOnSave = onSave;
-
-    fields.forEach(field => {
-        const input = modalContent.querySelector(`#${field.name}`);
-        if (input) input.addEventListener('change', (e) => {
-            window.currentModalValues[field.name] = e.target.value;
-        });
-    });
-    customElements.forEach(element => {
-        if (element.type === 'checkbox') {
-            const checkbox = modalContent.querySelector(`#${element.id}`);
-            checkbox.addEventListener('change', element.onChange);
-            window.currentModalValues[element.id] = checkbox.checked;
+        const tables = initializeTables();
+        const table = tables.find(t => t.id === parseInt(tableNumber));
+        if (table && order && order.status === 'Entregue') { // Only release table if status is "Entregue"
+            table.occupied = false;
+            localStorage.setItem('tables', JSON.stringify(tables));
+            console.log(`Table ${tableNumber} released (occupied set to false)`);
         }
-    });
-
-    modal.classList.remove('hidden');
-}
-
-function saveModal() {
-    if (window.currentModalOnSave) {
-        window.currentModalOnSave(window.currentModalValues);
+    } else if (event.data.type === 'statusUpdate' && event.data.newStatus === 'Entregue') {
+        const { orderId } = event.data;
+        const orders = JSON.parse(localStorage.getItem('orders') || '[]');
+        const orderIndex = orders.findIndex(o => o.id === orderId);
+        if (orderIndex !== -1) {
+            const order = orders[orderIndex];
+            if (order.payment) { // Only move if payment is true
+                const removedOrder = orders.splice(orderIndex, 1)[0];
+                const controlOrders = JSON.parse(localStorage.getItem('controlOrders') || '[]');
+                controlOrders.push(removedOrder);
+                localStorage.setItem('orders', JSON.stringify(orders));
+                localStorage.setItem('controlOrders', JSON.stringify(controlOrders));
+                renderTableCards(); // Refresh table display if needed
+            }
+            const tables = initializeTables();
+            const table = tables.find(t => t.id === parseInt(order.tableNumber));
+            if (table && order.payment) { // Release table if payment is true
+                table.occupied = false;
+                localStorage.setItem('tables', JSON.stringify(tables));
+                console.log(`Table ${order.tableNumber} released (occupied set to false)`);
+            }
+        }
     }
-    closeModal();
-}
-
-function closeModal() {
-    const modal = document.getElementById('productModal');
-    modal.classList.add('hidden');
-    modal.querySelector('div').innerHTML = '';
-    window.currentModalValues = {};
-    window.currentModalOnSave = null;
-}
-
-document.getElementById('placeOrderBtn').addEventListener('click', openOrderModal);
-fetchProducts();
+};
+renderTableCards();
