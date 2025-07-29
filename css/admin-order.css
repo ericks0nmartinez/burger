@@ -33,3 +33,28 @@ tbody tr:hover {
         min-width: 100px;
     }
 }
+
+@media print {
+    body {
+        font-size: 14px;
+        /* Ajusta o tamanho da fonte para impressão */
+        margin: 0;
+        padding: 0;
+    }
+
+    /* Oculta elementos desnecessários durante a impressão */
+    table,
+    thead,
+    tbody tr:hover,
+    button {
+        display: none;
+    }
+
+    /* Garante que apenas o conteúdo do comprovante seja exibido */
+    .print-content {
+        display: block !important;
+        width: 100%;
+        margin: 0;
+        padding: 10px;
+    }
+}

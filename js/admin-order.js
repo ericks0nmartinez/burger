@@ -142,6 +142,7 @@ function printOrder(id) {
     if (!order) return;
 
     const printContent = document.createElement('div');
+    printContent.className = 'print-content'; // Adiciona a classe para estilização
     printContent.innerHTML = `
         <h2>Comprovante de Pedido</h2>
         <p><strong>ID do Pedido:</strong> ${order.id}</p>
@@ -159,6 +160,7 @@ function printOrder(id) {
     document.body.innerHTML = printContent.outerHTML;
     window.print();
     document.body.innerHTML = originalContent;
+    window.location.reload(); // Recarrega a página para restaurar o estado original
 }
 
 loadOrders();
