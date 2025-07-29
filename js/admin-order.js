@@ -141,10 +141,8 @@ function printOrder(id) {
     const order = orders.find(o => o.id === id);
     if (!order) return;
 
-    // Cria um contêiner temporário para o comprovante
     const printContent = document.createElement('div');
-    printContent.className = 'print-content';
-    printContent.style.display = 'none'; // Oculta inicialmente para evitar flickering
+    printContent.className = 'print-content'; // Adiciona a classe para estilização
     printContent.innerHTML = `
         <h2>Comprovante de Pedido</h2>
         <p><strong>ID do Pedido:</strong> ${order.id}</p>
@@ -158,25 +156,11 @@ function printOrder(id) {
         <p><strong>Data de Impressão:</strong> ${new Date().toLocaleString('pt-BR')}</p>
     `;
 
-    // Adiciona o contêiner ao body
-    document.body.appendChild(printContent);
-
-    // Força a renderização antes da impressão
-    window.requestAnimationFrame(() => {
-        // Oculta todo o conteúdo exceto o print-content para impressão
-        const originalContent = document.querySelectorAll('body > *:not(.print-content)');
-        originalContent.forEach(el => el.style.display = 'none');
-        printContent.style.display = 'block';
-
-        // Chama a impressão após um pequeno atraso para garantir renderização
-        setTimeout(() => {
-            window.print();
-
-            // Restaura o conteúdo original após a impressão
-            printContent.remove();
-            originalContent.forEach(el => el.style.display = '');
-        }, 100); // Atraso de 100ms para garantir que o navegador processe o conteúdo
-    });
+    const originalContent = document.body.innerHTML;
+    document.body.innerHTML = printContent.outerHTML;
+    window.print();
+    document.body.innerHTML = originalContent;
+    window.location.reload(); // Recarrega a página para restaurar o estado original
 }
 
 loadOrders();
