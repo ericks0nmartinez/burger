@@ -1,5 +1,6 @@
 let products = [];
 let quantities = {};
+const DELIVERY_FEE = 10.00; // Fixed delivery fee, aligned with admin-order.js
 
 async function fetchProducts() {
     try {
@@ -12,6 +13,12 @@ async function fetchProducts() {
             throw new Error('Dados de produtos não estão em formato de array');
         }
         products = data.map(p => ({ ...p, status: p.status || 'Ativo' }));
+        // Clean up invalid order-client data
+        const clientOrder = JSON.parse(localStorage.getItem('order-client') || 'null');
+        if (clientOrder && !clientOrder.total) {
+            clientOrder.total = calculateOrderTotal(clientOrder.items);
+            localStorage.setItem('order-client', JSON.stringify(clientOrder));
+        }
         renderProducts();
         renderClientOrder();
     } catch (error) {
@@ -19,7 +26,16 @@ async function fetchProducts() {
         alert('Não foi possível carregar os produtos. Verifique o arquivo products.json.');
         products = [];
         renderProducts();
+        renderClientOrder();
     }
+}
+
+function calculateOrderTotal(items) {
+    if (!items || !Array.isArray(items)) return 0;
+    return items.reduce((sum, item) => {
+        const product = products.find(p => p.id === item.id);
+        return sum + (product ? product.price * item.qty : 0);
+    }, 0);
 }
 
 function renderProducts() {
@@ -55,13 +71,22 @@ function updateOrderButton() {
 }
 
 function openOrderModal() {
+    // Calculate item total from quantities
+    const itemTotal = Object.entries(quantities).reduce((sum, [id, qty]) => {
+        if (qty > 0) {
+            const product = products.find(p => p.id === parseInt(id));
+            return sum + (product ? product.price * qty : 0);
+        }
+        return sum;
+    }, 0);
+
     openModal({
         title: 'Confirmar Pedido',
-        description: 'Preencha os dados do pedido.',
+        description: `Preencha os dados do pedido. Valor dos itens: R$ ${itemTotal.toFixed(2)}`,
         fields: [
             { name: 'name', type: 'text', placeholder: 'Nome' },
             { name: 'phone', type: 'tel', placeholder: 'Telefone' },
-            { name: 'paymentMethod', type: 'select', options: ['Selecione', 'PIX', 'Cartão', 'Dinheiro'] }
+            { name: 'paymentMethod', type: 'select', options: ['Selecione', 'Dinheiro', 'Cartão Débito', 'Cartão Crédito'] }
         ],
         customElements: [
             {
@@ -72,13 +97,27 @@ function openOrderModal() {
                     const isDelivery = this.checked;
                     const pickupGroup = document.getElementById('pickupTimeGroup');
                     const addressGroup = document.getElementById('addressGroup');
-                    const pickupDiv = pickupGroup ? pickupGroup.parentElement : null; // Get the parent div
+                    const pickupDiv = pickupGroup ? pickupGroup.parentElement : null;
+                    const totalDisplay = document.getElementById('orderTotalDisplay');
                     if (isDelivery) {
                         if (pickupDiv) pickupDiv.classList.add('hidden');
                         if (addressGroup) addressGroup.classList.remove('hidden');
+                        if (totalDisplay) {
+                            totalDisplay.innerHTML = `
+                                <p><strong>Valor dos Itens:</strong> R$ ${itemTotal.toFixed(2)}</p>
+                                <p><strong>Taxa de Entrega:</strong> R$ ${DELIVERY_FEE.toFixed(2)}</p>
+                                <p><strong>Valor Total:</strong> R$ ${(itemTotal + DELIVERY_FEE).toFixed(2)}</p>
+                            `;
+                        }
                     } else {
                         if (pickupDiv) pickupDiv.classList.remove('hidden');
                         if (addressGroup) addressGroup.classList.add('hidden');
+                        if (totalDisplay) {
+                            totalDisplay.innerHTML = `
+                                <p><strong>Valor dos Itens:</strong> R$ ${itemTotal.toFixed(2)}</p>
+                                <p><strong>Valor Total:</strong> R$ ${itemTotal.toFixed(2)}</p>
+                            `;
+                        }
                     }
                 }
             },
@@ -97,6 +136,16 @@ function openOrderModal() {
                     { name: 'neighborhood', type: 'text', placeholder: 'Bairro' },
                     { name: 'reference', type: 'text', placeholder: 'Referência' }
                 ]
+            },
+            {
+                type: 'custom',
+                id: 'orderTotalDisplay',
+                html: `
+                    <div id="orderTotalDisplay" class="mb-2">
+                        <p><strong>Valor dos Itens:</strong> R$ ${itemTotal.toFixed(2)}</p>
+                        <p><strong>Valor Total:</strong> R$ ${itemTotal.toFixed(2)}</p>
+                    </div>
+                `
             }
         ],
         onSave: (values) => {
@@ -109,14 +158,14 @@ function openOrderModal() {
                 neighborhood: document.getElementById('neighborhood').value,
                 reference: document.getElementById('reference').value
             } : null;
-            if (!validateOrderForm(isDelivery, pickupTime, address)) return;
+            if (!validateOrderForm(isDelivery, pickupTime, address, values)) return;
             saveOrder(values, isDelivery, pickupTime, address, onclient);
         },
         initialValues: {}
     });
 }
 
-function validateOrderForm(isDelivery, pickupTime, address) {
+function validateOrderForm(isDelivery, pickupTime, address, values) {
     const name = document.getElementById('name');
     const phone = document.getElementById('phone');
     const paymentMethod = document.getElementById('paymentMethod');
@@ -136,6 +185,13 @@ function validateOrderForm(isDelivery, pickupTime, address) {
 }
 
 function saveOrder(values, isDelivery, pickupTime, address, onclient) {
+    const total = Object.entries(quantities).reduce((sum, [id, qty]) => {
+        if (qty > 0) {
+            const product = products.find(p => p.id === parseInt(id));
+            return sum + (product ? product.price * qty : 0);
+        }
+        return sum;
+    }, 0);
     const order = {
         id: Date.now(),
         time: new Date().toISOString().replace('Z', '-04:00'),
@@ -147,6 +203,8 @@ function saveOrder(values, isDelivery, pickupTime, address, onclient) {
         pickupTime,
         address,
         items: Object.entries(quantities).filter(([_, qty]) => qty > 0).map(([id, qty]) => ({ id: parseInt(id), qty })),
+        total,
+        deliveryFee: isDelivery ? DELIVERY_FEE : 0,
         status: 'Aguardando'
     };
     let orders = JSON.parse(localStorage.getItem('orders') || '[]');
@@ -165,6 +223,12 @@ function renderClientOrder() {
         clientOrderDiv.innerHTML = '<p>Nenhum pedido encontrado para você.</p>';
         return;
     }
+    // Calculate total if missing
+    if (!clientOrder.total) {
+        clientOrder.total = calculateOrderTotal(clientOrder.items);
+        localStorage.setItem('order-client', JSON.stringify(clientOrder));
+    }
+    const totalWithDelivery = (clientOrder.total + (clientOrder.deliveryFee || 0)).toFixed(2);
     clientOrderDiv.innerHTML = `
         <h2>Seu Pedido</h2>
         <p><strong>ID:</strong> ${clientOrder.id}</p>
@@ -175,8 +239,19 @@ function renderClientOrder() {
         ` : ''}
         <p><strong>Pagamento:</strong> ${clientOrder.paymentMethod}</p>
         <p><strong>Itens:</strong> ${clientOrder.items.map(i => `${products.find(p => p.id === i.id)?.name || 'Produto não encontrado'} (x${i.qty})`).join(', ') || 'N/A'}</p>
+        <p><strong>Valor dos Itens:</strong> R$ ${clientOrder.total.toFixed(2)}</p>
+        ${clientOrder.deliveryFee ? `<p><strong>Taxa de Entrega:</strong> R$ ${clientOrder.deliveryFee.toFixed(2)}</p>` : ''}
+        <p><strong>Valor Total:</strong> R$ ${totalWithDelivery}</p>
         <p><strong>Status:</strong> ${clientOrder.status}</p>
     `;
+}
+
+function calculateOrderTotal(items) {
+    if (!items || !Array.isArray(items)) return 0;
+    return items.reduce((sum, item) => {
+        const product = products.find(p => p.id === item.id);
+        return sum + (product ? product.price * item.qty : 0);
+    }, 0);
 }
 
 const bc = new BroadcastChannel('order_updates');

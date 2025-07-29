@@ -1,5 +1,10 @@
 let orders = [];
 let products = [];
+let cashRegisterOpen = JSON.parse(localStorage.getItem('cashRegisterOpen') || 'false');
+let cashRegisterOpenTime = localStorage.getItem('cashRegisterOpenTime') || null;
+const DELIVERY_FEE = 10.00; // Fixed delivery fee
+const DEBIT_CARD_FEE_RATE = 0.02; // 2% fee for debit card
+const CREDIT_CARD_FEE_RATE = 0.05; // 5% fee for credit card
 
 async function loadOrders() {
     try {
@@ -33,8 +38,19 @@ async function loadOrders() {
                     order.statusHistory[order.status] = { start: new Date().toISOString().replace('Z', '-04:00'), end: null };
                 }
             }
+            // Calculate order total (items) if not present
+            if (!order.total) {
+                order.total = order.items.reduce((sum, item) => {
+                    const product = products.find(p => p.id === item.id);
+                    return sum + (product ? product.price * item.qty : 0);
+                }, 0);
+            }
+            // Assign delivery fee if applicable
+            order.deliveryFee = order.delivery ? DELIVERY_FEE : 0;
         });
         localStorage.setItem('orders', JSON.stringify(orders));
+        updateCashRegisterUI();
+        updateCashRegisterTotals();
         renderOrders();
     } catch (error) {
         console.error('Erro:', error);
@@ -42,7 +58,63 @@ async function loadOrders() {
     }
 }
 
+function calculateCashRegisterTotals() {
+    let cashTotal = 0;
+    let debitCardTotal = 0;
+    let creditCardTotal = 0;
+    let deliveryFees = 0;
+    let overallTotal = 0;
+
+    const allOrders = [
+        ...JSON.parse(localStorage.getItem('orders') || '[]'),
+        ...JSON.parse(localStorage.getItem('controlOrders') || '[]')
+    ];
+
+    allOrders.forEach(order => {
+        if (order.total) {
+            if (order.paymentMethod === 'Dinheiro') {
+                cashTotal += order.total;
+            } else if (order.paymentMethod === 'Cartão Débito') {
+                debitCardTotal += order.total * (1 - DEBIT_CARD_FEE_RATE); // Subtract 2% fee
+            } else if (order.paymentMethod === 'Cartão Crédito') {
+                creditCardTotal += order.total * (1 - CREDIT_CARD_FEE_RATE); // Subtract 5% fee
+            }
+            overallTotal += order.total;
+            if (order.deliveryFee) {
+                deliveryFees += order.deliveryFee;
+                overallTotal += order.deliveryFee;
+            }
+        }
+    });
+
+    return {
+        cashTotal: cashTotal.toFixed(2),
+        debitCardTotal: debitCardTotal.toFixed(2),
+        creditCardTotal: creditCardTotal.toFixed(2),
+        deliveryFees: deliveryFees.toFixed(2),
+        overallTotal: overallTotal.toFixed(2)
+    };
+}
+
+function updateCashRegisterTotals() {
+    const totals = calculateCashRegisterTotals();
+    const totalsDiv = document.getElementById('cashRegisterTotals');
+    totalsDiv.innerHTML = `
+        <h2 class="text-lg font-semibold mb-2">Totais do Caixa</h2>
+        <p><strong>Dinheiro:</strong> R$ ${totals.cashTotal}</p>
+        <p><strong>Cartão Débito (líquido):</strong> R$ ${totals.debitCardTotal}</p>
+        <p><strong>Cartão Crédito (líquido):</strong> R$ ${totals.creditCardTotal}</p>
+        <p><strong>Taxas de Entrega:</strong> R$ ${totals.deliveryFees}</p>
+        <p><strong>Total Geral:</strong> R$ ${totals.overallTotal}</p>
+    `;
+}
+
 function renderOrders() {
+    if (!cashRegisterOpen) {
+        const tableBody = document.getElementById('orderTable');
+        tableBody.innerHTML = '<tr><td colspan="3" class="text-center py-4">Caixa fechado. Abra o caixa para gerenciar pedidos.</td></tr>';
+        return;
+    }
     const tableBody = document.getElementById('orderTable');
     tableBody.innerHTML = '';
     orders.forEach(order => {
@@ -58,30 +130,34 @@ function renderOrders() {
         const details = document.createElement('tr');
         details.className = `hidden accordion-content-${order.id}`;
         let statusDurations = '';
-        for (let status in order.statusHistory) {
-            const { start, end } = order.statusHistory[status];
-            if (end) {
-                const durationMs = new Date(end) - new Date(start);
-                const durationMin = Math.floor(durationMs / 60000);
-                const durationSec = Math.floor((durationMs % 60000) / 1000);
-                statusDurations += `<p>${status}: ${durationMin}m ${durationSec}s</p>`;
-            } else if (status === order.status && status !== 'Entregue') {
-                const currentTime = new Date();
-                const startTime = new Date(start);
-                const durationMs = currentTime - startTime;
-                const durationMin = Math.max(0, Math.floor(durationMs / 60000));
-                const durationSec = Math.max(0, Math.floor((durationMs % 60000) / 1000));
-                statusDurations += `<p>${status} (atual): ${durationMin}m ${durationSec}s</p>`;
-            } else if (status === 'Entregue' && !end) {
-                statusDurations += `<p>${status} (atual): 0m 0s (registrado às ${new Date(start).toLocaleTimeString('pt-BR')})</p>`;
-            }
-        }
+        /*         for (let status in order.statusHistory) {
+                    const { start, end } = order.statusHistory[status];
+                    if (end) {
+                        const durationMs = new Date(end) - new Date(start);
+                        const durationMin = Math.floor(durationMs / 60000);
+                        const durationSec = Math.floor((durationMs % 60000) / 1000);
+                        statusDurations += `<p>${status}: ${durationMin}m ${durationSec}s</p>`;
+                    } else if (status === order.status && status !== 'Entregue') {
+                        const currentTime = new Date();
+                        const startTime = new Date(start);
+                        const durationMs = currentTime - startTime;
+                        const durationMin = Math.max(0, Math.floor(durationMs / 60000));
+                        const durationSec = Math.max(0, Math.floor((durationMs % 60000) / 1000));
+                        statusDurations += `<p>${status} (atual): ${durationMin}m ${durationSec}s</p>`;
+                    } else if (status === 'Entregue' && !end) {
+                        statusDurations += `<p>${status} (atual): 0m 0s (registrado às ${new Date(start).toLocaleTimeString('pt-BR')})</p>`;
+                    }
+                } */
+        const totalWithDelivery = (order.total + (order.deliveryFee || 0)).toFixed(2);
         details.innerHTML = `
             <td colspan="3" class="px-4 py-2">
                 <p>Tipo: ${order.delivery ? 'Entrega' : 'Retirada'}${order.pickupTime ? ` (${order.pickupTime})` : ''}</p>
                 <p>Pagamento: ${order.paymentMethod}</p>
                 ${order.address ? `<p>Endereço: ${order.address.address}, ${order.address.number}, ${order.address.neighborhood}</p>` : ''}
                 <p>Itens: ${order.items.map(i => `${products.find(p => p.id === i.id)?.name || 'Produto não encontrado'} (x${i.qty})`).join(', ')}</p>
+                <p>Valor dos Itens: R$ ${order.total.toFixed(2)}</p>
+                ${order.deliveryFee ? `<p>Taxa de Entrega: R$ ${order.deliveryFee.toFixed(2)}</p>` : ''}
+                <p>Valor Total: R$ ${totalWithDelivery}</p>
                 <p>Status: ${order.status}</p>
                 <div class="mt-2">
                     ${order.status === 'Aguardando' ? '<button onclick="updateStatus(' + order.id + ', \'Preparando\')" class="bg-blue-500 text-white px-2 py-1 rounded mr-2">Preparar</button>' : ''}
@@ -103,6 +179,10 @@ function toggleAccordion(id) {
 }
 
 function updateStatus(id, newStatus) {
+    if (!cashRegisterOpen) {
+        alert('O caixa está fechado. Abra o caixa para atualizar pedidos.');
+        return;
+    }
     const orderIndex = orders.findIndex(o => o.id === id);
     if (orderIndex === -1) return;
 
@@ -122,12 +202,13 @@ function updateStatus(id, newStatus) {
     const clientOrder = JSON.parse(localStorage.getItem('order-client') || 'null');
     if (clientOrder && clientOrder.id === order.id) {
         clientOrder.status = newStatus;
-        clientOrder.statusHistory = order.statusHistory; // Sync full history
+        clientOrder.statusHistory = order.statusHistory;
         localStorage.setItem('order-client', JSON.stringify(clientOrder));
     }
 
     const bc = new BroadcastChannel('order_updates');
     bc.postMessage({ type: 'statusUpdate', orderId: id, newStatus: newStatus });
+    updateCashRegisterTotals();
     renderOrders();
 }
 
@@ -138,11 +219,16 @@ function moveToControl(order) {
 }
 
 function printOrder(id) {
+    if (!cashRegisterOpen) {
+        alert('O caixa está fechado. Abra o caixa para imprimir pedidos.');
+        return;
+    }
     const order = orders.find(o => o.id === id);
     if (!order) return;
 
+    const totalWithDelivery = (order.total + (order.deliveryFee || 0)).toFixed(2);
     const printContent = document.createElement('div');
-    printContent.className = 'print-content'; // Adiciona a classe para estilização
+    printContent.className = 'print-content';
     printContent.innerHTML = `
         <h2>Comprovante de Pedido</h2>
         <p><strong>ID do Pedido:</strong> ${order.id}</p>
@@ -152,6 +238,9 @@ function printOrder(id) {
         ${order.address ? `<p><strong>Endereço:</strong> ${order.address.address}, ${order.address.number}, ${order.address.neighborhood}</p>` : ''}
         <p><strong>Pagamento:</strong> ${order.paymentMethod}</p>
         <p><strong>Itens:<br></strong> ${order.items.map(i => `${products.find(p => p.id === i.id)?.name || 'Produto não encontrado'} (x${i.qty})`).join('<br>')}</p>
+        <p><strong>Valor dos Itens:</strong> R$ ${order.total.toFixed(2)}</p>
+        ${order.deliveryFee ? `<p><strong>Taxa de Entrega:</strong> R$ ${order.deliveryFee.toFixed(2)}</p>` : ''}
+        <p><strong>Valor Total:</strong> R$ ${totalWithDelivery}</p>
         <p><strong>Status:</strong> ${order.status}</p>
         <p><strong>Data de Impressão:</strong> ${new Date().toLocaleString('pt-BR')}</p>
     `;
@@ -160,7 +249,50 @@ function printOrder(id) {
     document.body.innerHTML = printContent.outerHTML;
     window.print();
     document.body.innerHTML = originalContent;
-    window.location.reload(); // Recarrega a página para restaurar o estado original
+    window.location.reload();
+}
+
+function openCashRegister() {
+    if (cashRegisterOpen) {
+        alert('O caixa já está aberto.');
+        return;
+    }
+    cashRegisterOpen = true;
+    cashRegisterOpenTime = new Date().toISOString().replace('Z', '-04:00');
+    localStorage.setItem('cashRegisterOpen', JSON.stringify(cashRegisterOpen));
+    localStorage.setItem('cashRegisterOpenTime', cashRegisterOpenTime);
+    updateCashRegisterUI();
+    updateCashRegisterTotals();
+    renderOrders();
+}
+
+function closeCashRegister() {
+    if (!cashRegisterOpen) {
+        alert('O caixa já está fechado.');
+        return;
+    }
+    cashRegisterOpen = false;
+    cashRegisterOpenTime = null;
+    localStorage.setItem('cashRegisterOpen', JSON.stringify(cashRegisterOpen));
+    localStorage.setItem('cashRegisterOpenTime', null);
+    updateCashRegisterUI();
+    updateCashRegisterTotals();
+    renderOrders();
+}
+
+function updateCashRegisterUI() {
+    const openButton = document.getElementById('openCashRegister');
+    const closeButton = document.getElementById('closeCashRegister');
+    const statusSpan = document.getElementById('cashRegisterStatus');
+    if (cashRegisterOpen) {
+        openButton.classList.add('hidden');
+        closeButton.classList.remove('hidden');
+        statusSpan.textContent = `Caixa aberto em: ${new Date(cashRegisterOpenTime).toLocaleString('pt-BR')}`;
+    } else {
+        openButton.classList.remove('hidden');
+        closeButton.classList.add('hidden');
+        statusSpan.textContent = 'Caixa fechado';
+    }
 }
 
 loadOrders();

@@ -1,5 +1,6 @@
 let products = [];
 let quantities = {};
+const DELIVERY_FEE = 10.00; // Fixed delivery fee, aligned with admin-order.js
 
 async function fetchProducts() {
     try {
@@ -61,7 +62,7 @@ function openOrderModal() {
             { name: 'name', type: 'text', placeholder: 'Nome do Cliente' },
             { name: 'phone', type: 'tel', placeholder: 'Telefone' },
             { name: 'tableNumber', type: 'text', placeholder: 'Número da Mesa' },
-            { name: 'paymentMethod', type: 'select', options: ['Selecione', 'PIX', 'Cartão', 'Dinheiro'] }
+            { name: 'paymentMethod', type: 'select', options: ['Selecione', 'Dinheiro', 'Cartão Débito', 'Cartão Crédito'] }
         ],
         customElements: [
             {
@@ -75,7 +76,7 @@ function openOrderModal() {
         ],
         onSave: (values) => {
             const isPackaged = window.currentModalValues.isPackaged || false;
-            const onclient = "false"
+            const onclient = "false";
             if (!validateOrderForm(values, isPackaged)) return;
             saveOrder(values, isPackaged, onclient);
         },
@@ -92,6 +93,13 @@ function validateOrderForm(values, isPackaged) {
 }
 
 function saveOrder(values, isPackaged, onclient) {
+    const total = Object.entries(quantities).reduce((sum, [id, qty]) => {
+        if (qty > 0) {
+            const product = products.find(p => p.id === parseInt(id));
+            return sum + (product ? product.price * qty : 0);
+        }
+        return sum;
+    }, 0);
     const order = {
         id: Date.now(),
         time: new Date().toISOString().replace('Z', '-04:00'),
@@ -100,8 +108,12 @@ function saveOrder(values, isPackaged, onclient) {
         onclient,
         tableNumber: values.tableNumber,
         paymentMethod: values.paymentMethod,
-        isPackaged: isPackaged,
+        delivery: isPackaged, // Treat isPackaged as delivery for consistency
+        pickupTime: isPackaged ? null : '30 min', // Default pickup time for non-delivery
+        address: null, // No address for waiter orders
         items: Object.entries(quantities).filter(([_, qty]) => qty > 0).map(([id, qty]) => ({ id: parseInt(id), qty })),
+        total,
+        deliveryFee: isPackaged ? DELIVERY_FEE : 0,
         status: 'Aguardando'
     };
     let orders = JSON.parse(localStorage.getItem('orders') || '[]');

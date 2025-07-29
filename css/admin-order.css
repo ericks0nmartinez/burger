@@ -22,6 +22,14 @@ tbody tr:hover {
     background-color: #f3f4f6;
 }
 
+#cashRegisterTotals {
+    border: 1px solid #e5e7eb;
+}
+
+#cashRegisterTotals p {
+    margin: 4px 0;
+}
+
 @media (max-width: 640px) {
     table {
         display: block;
@@ -32,17 +40,19 @@ tbody tr:hover {
     td {
         min-width: 100px;
     }
+
+    #cashRegisterTotals {
+        font-size: 14px;
+    }
 }
 
 @media print {
     body {
         font-size: 14px;
-        /* Ajusta o tamanho da fonte para impressão */
         margin: 0;
         padding: 0;
     }
 
-    /* Oculta elementos desnecessários durante a impressão */
     table,
     thead,
     tbody,
@@ -51,11 +61,11 @@ tbody tr:hover {
     td,
     button,
     h1,
-    .container {
+    .container,
+    #cashRegisterTotals {
         display: none !important;
     }
 
-    /* Garante que apenas o conteúdo do comprovante seja exibido */
     .print-content {
         display: block !important;
         width: 100%;
