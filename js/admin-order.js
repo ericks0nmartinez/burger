@@ -2,9 +2,25 @@ let orders = [];
 let products = [];
 let cashRegisterOpen = JSON.parse(localStorage.getItem('cashRegisterOpen') || 'false');
 let cashRegisterOpenTime = localStorage.getItem('cashRegisterOpenTime') || null;
-const PAYMENT_METHODS = ['Selecione', 'Dinheiro', "PIX", 'Cartão Débito', 'Cartão Crédito'];
-const DEBIT_CARD_FEE_RATE = 0.02; // 2% fee for debit card
-const CREDIT_CARD_FEE_RATE = 0.05; // 5% fee for credit card
+let config = {};
+
+async function loadConfig() {
+    try {
+        const response = await fetch('../utils/config.json');
+        if (!response.ok) {
+            throw new Error(`Erro ao carregar configuração: ${response.status} - ${response.statusText}`);
+        }
+        config = await response.json();
+    } catch (error) {
+        console.error('Erro ao carregar config.json:', error);
+        alert('Não foi possível carregar a configuração. Verifique o arquivo config.json.');
+        config = {
+            PAYMENT_METHODS: ['Selecione', 'Dinheiro', 'PIX', 'Cartão Débito', 'Cartão Crédito'],
+            DEBIT_CARD_FEE_RATE: 0.02,
+            CREDIT_CARD_FEE_RATE: 0.05
+        };
+    }
+}
 
 function toggleAccordion(id) {
     const content = document.querySelector(`.accordion-content-${id}`);
@@ -69,10 +85,9 @@ function markAsReceived(orderId) {
                 order.statusHistory[order.status].end = new Date().toISOString().replace('Z', '-04:00');
             }
             order.receivedTime = new Date().toISOString().replace('Z', '-04:00');
-            order.payment = true; // Set payment to true when received
-            order.statusHistory['Recebido'] = { start: order.receivedTime, end: null }; // Keep Recebido as current status
+            order.payment = true;
+            order.statusHistory['Recebido'] = { start: order.receivedTime, end: null };
 
-            // Check and move to controlOrders if status is "Entregue" after setting payment to true
             if (order.status === 'Entregue') {
                 const orderIndex = orders.findIndex(o => o.id === orderId);
                 if (orderIndex !== -1) {
@@ -82,7 +97,6 @@ function markAsReceived(orderId) {
                 }
             }
 
-            // Notify waiter-order.js and delivery-order.js of payment update
             const bc = new BroadcastChannel('order_updates');
             bc.postMessage({
                 type: 'receivedOrder',
@@ -110,42 +124,37 @@ function updateStatus(id, newStatus) {
     }
 
     const order = orders[orderIndex];
-    console.log(`Updating status for order ${id}: ${order.status} -> ${newStatus}, payment: ${order.payment}`); // Debug log
+    console.log(`Updating status for order ${id}: ${order.status} -> ${newStatus}, payment: ${order.payment}`);
     if (order.statusHistory[order.status] && !order.statusHistory[order.status].end) {
         order.statusHistory[order.status].end = new Date().toISOString().replace('Z', '-04:00');
     }
     order.statusHistory[newStatus] = { start: new Date().toISOString().replace('Z', '-04:00'), end: newStatus === 'Entregue' ? new Date().toISOString().replace('Z', '-04:00') : null };
     order.status = newStatus;
 
-    // Add or update in delivery-orders when status changes to "A caminho"
     if (newStatus === 'A caminho' && order.delivery) {
         let deliveryOrders = JSON.parse(localStorage.getItem('delivery-orders') || '[]');
         const existingDeliveryOrderIndex = deliveryOrders.findIndex(o => o.id === order.id);
         if (existingDeliveryOrderIndex === -1) {
-            deliveryOrders.push({ ...order }); // Add a copy of the order
+            deliveryOrders.push({ ...order });
             console.log(`Order ${id} added to delivery-orders`);
         } else {
-            deliveryOrders[existingDeliveryOrderIndex] = { ...order }; // Update existing order
+            deliveryOrders[existingDeliveryOrderIndex] = { ...order };
             console.log(`Order ${id} updated in delivery-orders`);
         }
         localStorage.setItem('delivery-orders', JSON.stringify(deliveryOrders));
     }
 
-    // Handle "Entregue" status
     if (newStatus === 'Entregue') {
-        // Remove from delivery-orders
         let deliveryOrders = JSON.parse(localStorage.getItem('delivery-orders') || '[]');
         deliveryOrders = deliveryOrders.filter(o => o.id !== id);
         localStorage.setItem('delivery-orders', JSON.stringify(deliveryOrders));
         console.log(`Order ${id} removed from delivery-orders`);
 
-        // Move to controlOrders only if payment is true
         if (order.payment) {
             console.log(`Moving order ${id} to controlOrders`);
             const removedOrder = orders.splice(orderIndex, 1)[0];
             moveToControl(removedOrder);
 
-            // Update table status if applicable
             let tables = JSON.parse(localStorage.getItem('tables') || '[]');
             const table = tables.find(t => t.id === parseInt(order.tableNumber));
             if (table && table.occupied) {
@@ -177,7 +186,6 @@ function moveToControl(order) {
     let controlOrders = JSON.parse(localStorage.getItem('controlOrders') || '[]');
     controlOrders.push(order);
     localStorage.setItem('controlOrders', JSON.stringify(controlOrders));
-    // Remove from delivery-orders if present
     let deliveryOrders = JSON.parse(localStorage.getItem('delivery-orders') || '[]');
     deliveryOrders = deliveryOrders.filter(o => o.id !== order.id);
     localStorage.setItem('delivery-orders', JSON.stringify(deliveryOrders));
@@ -193,9 +201,9 @@ function calculateCashRegisterTotals() {
     let overallTotal = 0;
 
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // Start of today
+    today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1); // Start of tomorrow
+    tomorrow.setDate(today.getDate() + 1);
 
     const allOrders = [
         ...JSON.parse(localStorage.getItem('orders') || '[]'),
@@ -206,14 +214,14 @@ function calculateCashRegisterTotals() {
     });
 
     allOrders.forEach(order => {
-        if (order.total && order.payment) { // Only count paid orders
-            if (order.paymentMethod === 'Dinheiro') {
+        if (order.total && order.payment) {
+            if (order.paymentMethod === config.PAYMENT_METHODS[1]) {
                 cashTotal += order.total;
-            } else if (order.paymentMethod === 'Cartão Débito') {
-                debitCardTotal += order.total * (1 - DEBIT_CARD_FEE_RATE);
-            } else if (order.paymentMethod === 'Cartão Crédito') {
-                creditCardTotal += order.total * (1 - CREDIT_CARD_FEE_RATE);
-            } else if (order.paymentMethod === 'PIX') {
+            } else if (order.paymentMethod === config.PAYMENT_METHODS[3]) {
+                debitCardTotal += order.total * (1 - config.DEBIT_CARD_FEE_RATE);
+            } else if (order.paymentMethod === config.PAYMENT_METHODS[4]) {
+                creditCardTotal += order.total * (1 - config.CREDIT_CARD_FEE_RATE);
+            } else if (order.paymentMethod === config.PAYMENT_METHODS[2]) {
                 pixTotal += order.total;
             }
             overallTotal += order.total;
@@ -261,10 +269,15 @@ function renderOrders() {
         row.innerHTML = `
             <td class="px-4 py-2">${order.name.split(' ')[0]}</td>
             <td class="px-4 py-2">${new Date(order.time).toLocaleString('pt-BR')}</td>
-            <td class="px-4 py-2">
+            <td class="px-4 py-2 flex flex-wrap gap-2">
                 <button class="text-blue-500 hover:underline" onclick="printOrder(${order.id})">🖨️</button>
-                <button class="ml-2 text-blue-500 hover:underline" onclick="toggleAccordion(${order.id})">▼</button>
-                <button class="ml-2 bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600" onclick="markAsReceived(${order.id})">Marcar Recebido</button>
+                <button class="text-blue-500 hover:underline" onclick="toggleAccordion(${order.id})">▼</button>
+                <button class="bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600" onclick="markAsReceived(${order.id})">Pago</button>
+                ${order.status === 'Aguardando' ? `<button onclick="updateStatus(${order.id}, 'Preparando')" class="bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600">Preparar</button>` : ''}
+                ${order.status === 'Preparando' ? `<button onclick="updateStatus(${order.id}, 'Pronto')" class="bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600">Pronto</button>` : ''}
+                ${order.status === 'Pronto' && !order.delivery ? `<button onclick="updateStatus(${order.id}, 'Entregue')" class="bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600">Entregue</button>` : ''}
+                ${order.status === 'Pronto' && order.delivery ? `<button onclick="updateStatus(${order.id}, 'A caminho')" class="bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600">A caminho</button>` : ''}
+                ${order.status === 'A caminho' && order.delivery ? `<button onclick="updateStatus(${order.id}, 'Entregue')" class="bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600">Entregue</button>` : ''}
             </td>
         `;
         const details = document.createElement('tr');
@@ -282,13 +295,6 @@ function renderOrders() {
                 <p>Valor Total: R$ ${totalWithDelivery}</p>
                 <p>Status: ${order.status}</p>
                 <p>Pagamento: ${order.payment ? 'Recebido' : 'Pendente'}</p>
-                <div class="mt-2">
-                    ${order.status === 'Aguardando' ? '<button onclick="updateStatus(' + order.id + ', \'Preparando\')" class="bg-blue-500 text-white px-2 py-1 rounded mr-2">Preparar</button>' : ''}
-                    ${order.status === 'Preparando' ? '<button onclick="updateStatus(' + order.id + ', \'Pronto\')" class="bg-blue-500 text-white px-2 py-1 rounded mr-2">Pronto</button>' : ''}
-                    ${order.status === 'Pronto' && !order.delivery ? '<button onclick="updateStatus(' + order.id + ', \'Entregue\')" class="bg-blue-500 text-white px-2 py-1 rounded mr-2">Entregue</button>' : ''}
-                    ${order.status === 'Pronto' && order.delivery ? '<button onclick="updateStatus(' + order.id + ', \'A caminho\')" class="bg-blue-500 text-white px-2 py-1 rounded mr-2">A caminho</button>' : ''}
-                    ${order.status === 'A caminho' && order.delivery ? '<button onclick="updateStatus(' + order.id + ', \'Entregue\')" class="bg-blue-500 text-white px-2 py-1 rounded mr-2">Entregue</button>' : ''}
-                </div>
                 <div class="mt-2">${statusDurations}</div>
             </td>
         `;
@@ -298,7 +304,7 @@ function renderOrders() {
 }
 
 function openCashRegister() {
-    console.log('Abrir Caixa clicked'); // Debug log
+    console.log('Abrir Caixa clicked');
     if (cashRegisterOpen) {
         alert('O caixa já está aberto.');
         return;
@@ -313,7 +319,7 @@ function openCashRegister() {
 }
 
 function closeCashRegister() {
-    console.log('Fechar Caixa clicked'); // Debug log
+    console.log('Fechar Caixa clicked');
     if (!cashRegisterOpen) {
         alert('O caixa já está fechado.');
         return;
@@ -342,7 +348,8 @@ function updateCashRegisterUI() {
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadConfig();
     document.getElementById('openCashRegister').addEventListener('click', openCashRegister);
     document.getElementById('closeCashRegister').addEventListener('click', closeCashRegister);
 
@@ -384,7 +391,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         return sum + (product ? product.price * item.qty : 0);
                     }, 0);
                 }
-                order.payment = order.payment || false; // Default to false if not set
+                order.payment = order.payment || false;
             });
             localStorage.setItem('orders', JSON.stringify(orders));
             updateCashRegisterUI();

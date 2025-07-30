@@ -1,12 +1,27 @@
 let products = [];
 let quantities = {};
-const latitude = "-20.4899098";
-const longitude = "-54.6371336";
-const TAXA_POR_KM = 1.50; // R$ 1,50 por km
-const PREFIXOS_LOGRADOURO = ["Rua", "Avenida", "Travessa", "Alameda", "Praça", ""];
-const PAYMENT_METHODS = ['Selecione', 'Dinheiro', "PIX", 'Cartão Débito', 'Cartão Crédito'];
+let config = {};
 
-// Helper function to round delivery fee to nearest 50 cents or whole real
+async function loadConfig() {
+    try {
+        const response = await fetch('../utils/config.json');
+        if (!response.ok) {
+            throw new Error(`Erro ao carregar configuração: ${response.status} - ${response.statusText}`);
+        }
+        config = await response.json();
+    } catch (error) {
+        console.error('Erro ao carregar config.json:', error);
+        alert('Não foi possível carregar a configuração. Verifique o arquivo config.json.');
+        config = {
+            PAYMENT_METHODS: ['Selecione', 'Dinheiro', 'PIX', 'Cartão Débito', 'Cartão Crédito'],
+            TAXA_POR_KM: 1.5,
+            PREFIXOS_LOGRADOURO: ['Rua', 'Avenida', 'Travessa', 'Alameda', 'Praça', ''],
+            latitude: '-20.4899098',
+            longitude: '-54.6371336'
+        };
+    }
+}
+
 function roundToNearest50CentsOrReal(value) {
     const integerPart = Math.floor(value);
     const decimalPart = value - integerPart;
@@ -86,9 +101,8 @@ function updateOrderButton() {
     placeOrderBtn.disabled = Object.values(quantities).every(q => q === 0);
 }
 
-// Função para calcular a distância usando a fórmula de Haversine
 function calcularDistancia(lat1, lon1, lat2, lon2) {
-    const R = 6371; // Raio da Terra em quilômetros
+    const R = 6371;
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
     const a =
@@ -100,17 +114,14 @@ function calcularDistancia(lat1, lon1, lat2, lon2) {
     return distancia.toFixed(2);
 }
 
-// Função para obter coordenadas, bairro e distância a partir do endereço usando Nominatim
 async function obterCoordenadas(enderecoBase, numero, bairro) {
     const enderecoFixo = ", Campo Grande, MS, Brasil";
     let resultado = null;
     let enderecoUsado = enderecoBase;
 
-    // Monta o endereço com ou sem bairro
     const enderecoBaseCompleto = bairro ? `${enderecoBase}, ${numero}, ${bairro}${enderecoFixo}` : `${enderecoBase}, ${numero}${enderecoFixo}`;
 
-    // Tenta cada prefixo ou sem prefixo
-    for (const prefixo of PREFIXOS_LOGRADOURO) {
+    for (const prefixo of config.PREFIXOS_LOGRADOURO) {
         const endereco = prefixo ? `${prefixo} ${enderecoBaseCompleto}` : enderecoBaseCompleto;
         const query = encodeURIComponent(endereco);
         const url = `https://nominatim.openstreetmap.org/search?q=${query}&format=json&addressdetails=1&limit=1`;
@@ -134,7 +145,6 @@ async function obterCoordenadas(enderecoBase, numero, bairro) {
             console.error("Erro ao buscar com prefixo", prefixo, ":", error.message);
         }
 
-        // Pausa para respeitar o limite de 1 requisição por segundo
         await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
@@ -143,9 +153,8 @@ async function obterCoordenadas(enderecoBase, numero, bairro) {
         return null;
     }
 
-    // Calcula a distância
-    const distancia = calcularDistancia(parseFloat(latitude), parseFloat(longitude), resultado.lat, resultado.lon);
-    const taxaEntregaRaw = distancia * TAXA_POR_KM;
+    const distancia = calcularDistancia(parseFloat(config.latitude), parseFloat(config.longitude), resultado.lat, resultado.lon);
+    const taxaEntregaRaw = distancia * config.TAXA_POR_KM;
     const taxaEntrega = roundToNearest50CentsOrReal(taxaEntregaRaw);
     return { ...resultado, enderecoUsado, distancia, taxaEntrega };
 }
@@ -165,7 +174,7 @@ function openOrderModal() {
         fields: [
             { name: 'name', type: 'text', placeholder: 'Nome' },
             { name: 'phone', type: 'tel', placeholder: 'Telefone' },
-            { name: 'paymentMethod', type: 'select', options: PAYMENT_METHODS, placeholder: 'Pagamento' }
+            { name: 'paymentMethod', type: 'select', options: config.PAYMENT_METHODS, placeholder: 'Pagamento' }
         ],
         customElements: [
             {
@@ -259,7 +268,6 @@ function openOrderModal() {
         initialValues: {}
     });
 
-    // Adiciona o evento ao botão "Calcular entrega" após o modal ser renderizado
     setTimeout(() => {
         const calcularTaxaBtn = document.getElementById('calcularTaxaBtn');
         if (calcularTaxaBtn) {
@@ -293,7 +301,7 @@ function validateOrderForm(isDelivery, pickupTime, address, values) {
     const name = document.getElementById('name');
     const phone = document.getElementById('phone');
     const paymentMethod = document.getElementById('paymentMethod');
-    if (!name.value || !phone.value || paymentMethod.value === 'Selecione') {
+    if (!name.value || !phone.value || paymentMethod.value === config.PAYMENT_METHODS[0]) {
         alert('Preencha todos os campos obrigatórios.');
         return false;
     }
@@ -326,7 +334,7 @@ function saveOrder(values, isDelivery, pickupTime, address, onclient, distancia,
         delivery: isDelivery,
         pickupTime,
         address,
-        distancia, // Inclui a distância no JSON
+        distancia,
         items: Object.entries(quantities).filter(([_, qty]) => qty > 0).map(([id, qty]) => ({ id: parseInt(id), qty })),
         total,
         deliveryFee: isDelivery ? taxaEntrega : 0,
@@ -382,5 +390,8 @@ bc.onmessage = (event) => {
     }
 };
 
-document.getElementById('placeOrderBtn').addEventListener('click', openOrderModal);
-fetchProducts();
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadConfig();
+    document.getElementById('placeOrderBtn').addEventListener('click', openOrderModal);
+    fetchProducts();
+});

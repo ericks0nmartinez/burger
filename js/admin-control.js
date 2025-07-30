@@ -2,9 +2,25 @@ let controlOrders = [];
 let products = [];
 let cashRegisterOpen = JSON.parse(localStorage.getItem('cashRegisterOpen') || 'false');
 let cashRegisterOpenTime = localStorage.getItem('cashRegisterOpenTime') || null;
-const PAYMENT_METHODS = ['Selecione', 'Dinheiro', "PIX", 'Cartão Débito', 'Cartão Crédito'];
-const DEBIT_CARD_FEE_RATE = 0.02; // 2% fee for debit card
-const CREDIT_CARD_FEE_RATE = 0.05; // 5% fee for credit card
+let config = {};
+
+async function loadConfig() {
+    try {
+        const response = await fetch('../utils/config.json');
+        if (!response.ok) {
+            throw new Error(`Erro ao carregar configuração: ${response.status} - ${response.statusText}`);
+        }
+        config = await response.json();
+    } catch (error) {
+        console.error('Erro ao carregar config.json:', error);
+        alert('Não foi possível carregar a configuração. Verifique o arquivo config.json.');
+        config = {
+            PAYMENT_METHODS: ['Selecione', 'Dinheiro', 'PIX', 'Cartão Débito', 'Cartão Crédito'],
+            DEBIT_CARD_FEE_RATE: 0.02,
+            CREDIT_CARD_FEE_RATE: 0.05
+        };
+    }
+}
 
 function toggleAccordion(id) {
     const content = document.querySelector(`.accordion-content-${id}`);
@@ -79,14 +95,12 @@ function markAsReceived(orderId) {
                 order.statusHistory[order.status].end = new Date().toISOString().replace('Z', '-04:00');
             }
             order.receivedTime = new Date().toISOString().replace('Z', '-04:00');
-            order.payment = true; // Set payment to true when received
-            order.statusHistory['Recebido'] = { start: order.receivedTime, end: null }; // Keep Recebido as current status
+            order.payment = true;
+            order.statusHistory['Recebido'] = { start: order.receivedTime, end: null };
 
-            // Note: Not saving to localStorage as controlOrders is now loaded from pedidos.json.
+            // Note: Not saving to localStorage as controlOrders is loaded from pedidos.json.
             // To persist changes, implement server-side saving to update pedidos.json.
-            // localStorage.setItem('controlOrders', JSON.stringify(controlOrders));
 
-            // Notify waiter-order.js and delivery-order.js of payment update
             const bc = new BroadcastChannel('order_updates');
             bc.postMessage({
                 type: 'receivedOrder',
@@ -147,7 +161,7 @@ function populateDayFilter(orders, selectedMonth) {
     Array.from(days).sort((a, b) => a - b).forEach(day => {
         const option = document.createElement('option');
         option.value = day;
-        option.textContent = day.toString().padStart(2, '0'); // Format as 01, 02, etc.
+        option.textContent = day.toString().padStart(2, '0');
         dayFilter.appendChild(option);
     });
     console.log('Day filter populated with days:', Array.from(days));
@@ -193,7 +207,7 @@ function renderOrders() {
             <td class="px-4 py-2">
                 <button class="text-blue-500 hover:underline" onclick="printOrder(${order.id})">🖨️</button>
                 <button class="ml-2 text-blue-500 hover:underline" onclick="toggleAccordion(${order.id})">▼</button>
-                ${!order.payment ? `<button class="ml-2 bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600" onclick="markAsReceived(${order.id})">Marcar Recebido</button>` : ''}
+                ${!order.payment ? `<button class="ml-2 bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600" onclick="markAsReceived(${order.id})">Pago</button>` : ''}
             </td>
         `;
         const details = document.createElement('tr');
@@ -217,8 +231,9 @@ function renderOrders() {
     });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     console.log('DOMContentLoaded event fired');
+    await loadConfig();
     async function loadOrders() {
         try {
             console.log('Starting to load products from products.json');
@@ -271,17 +286,15 @@ document.addEventListener('DOMContentLoaded', () => {
                         return sum + (product ? product.price * item.qty : 0);
                     }, 0);
                 }
-                order.payment = order.payment || false; // Default to false if not set
+                order.payment = order.payment || false;
             });
             console.log('controlOrders processed:', controlOrders.length);
 
-            // Check if filter elements exist before populating
             if (!document.getElementById('monthFilter') || !document.getElementById('dayFilter') || !document.getElementById('orderTable')) {
                 console.error('One or more required DOM elements (monthFilter, dayFilter, orderTable) are missing');
                 return;
             }
 
-            // Populate month and day filters
             console.log('Populating month filter');
             populateMonthFilter(controlOrders);
             console.log('Populating day filter');
@@ -289,7 +302,6 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('Rendering orders');
             renderOrders();
 
-            // Add event listeners for filters
             const monthFilter = document.getElementById('monthFilter');
             const dayFilter = document.getElementById('dayFilter');
             if (monthFilter) {

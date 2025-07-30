@@ -1,0 +1,24 @@
+{
+    "PAYMENT_METHODS": [
+        "Selecione",
+        "Dinheiro",
+        "PIX",
+        "Cartão Débito",
+        "Cartão Crédito"
+    ],
+    "DEBIT_CARD_FEE_RATE": 0.02,
+    "CREDIT_CARD_FEE_RATE": 0.05,
+    "TAXA_POR_KM": 1.5,
+    "PREFIXOS_LOGRADOURO": [
+        "Rua",
+        "Avenida",
+        "Travessa",
+        "Alameda",
+        "Praça",
+        ""
+    ],
+    "latitude": "-20.4899098",
+    "longitude": "-54.6371336",
+    "DELIVERY_FEE": 10.0,
+    "TABLE_COUNT": 6
+}

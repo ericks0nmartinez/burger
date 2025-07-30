@@ -30,10 +30,30 @@ tbody tr:hover {
     margin: 4px 0;
 }
 
+/* Ensure buttons in the Ações column are displayed inline with spacing */
+td .flex {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    /* Tailwind gap-2 */
+    align-items: center;
+}
+
+/* Adjust button sizes for consistency */
+td button {
+    font-size: 0.875rem;
+    /* Tailwind text-sm */
+    line-height: 1.25rem;
+    padding: 0.25rem 0.5rem;
+    /* Tailwind px-2 py-1 */
+}
+
+/* Responsive design for smaller screens */
 @media (max-width: 640px) {
     table {
         display: block;
         overflow-x: auto;
+        white-space: nowrap;
     }
 
     th,
@@ -43,6 +63,19 @@ tbody tr:hover {
 
     #cashRegisterTotals {
         font-size: 14px;
+    }
+
+    /* Stack buttons vertically on small screens */
+    td .flex {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    td button {
+        width: 100%;
+        text-align: center;
+        margin-bottom: 0.25rem;
+        /* Add spacing between stacked buttons */
     }
 }
 

@@ -1,14 +1,30 @@
 let products = [];
 let quantities = {};
 let selectedTable = null;
-const DELIVERY_FEE = 10.00;
-const TABLE_COUNT = 6;
-const PAYMENT_METHODS = ['Selecione', 'Dinheiro', "PIX", 'Cartão Débito', 'Cartão Crédito'];
+let config = {};
+
+async function loadConfig() {
+    try {
+        const response = await fetch('../utils/config.json');
+        if (!response.ok) {
+            throw new Error(`Erro ao carregar configuração: ${response.status} - ${response.statusText}`);
+        }
+        config = await response.json();
+    } catch (error) {
+        console.error('Erro ao carregar config.json:', error);
+        alert('Não foi possível carregar a configuração. Verifique o arquivo config.json.');
+        config = {
+            PAYMENT_METHODS: ['Selecione', 'Dinheiro', 'PIX', 'Cartão Débito', 'Cartão Crédito'],
+            DELIVERY_FEE: 10.0,
+            TABLE_COUNT: 6
+        };
+    }
+}
 
 function initializeTables() {
     const tables = JSON.parse(localStorage.getItem('tables') || '[]');
-    if (tables.length !== TABLE_COUNT) {
-        const newTables = Array.from({ length: TABLE_COUNT }, (_, i) => ({
+    if (tables.length !== config.TABLE_COUNT) {
+        const newTables = Array.from({ length: config.TABLE_COUNT }, (_, i) => ({
             id: i + 1,
             occupied: false
         }));
@@ -45,11 +61,8 @@ function renderTableCards() {
     tableCards.innerHTML = '';
     tables.forEach(table => {
         const card = document.createElement('div');
-        // Check if the table has any orders with payment: true
         const hasPaidOrder = orders.some(order => order.tableNumber === table.id.toString() && order.payment === true);
-        // Apply bg-green-500 for paid orders, otherwise use occupied or unoccupied color
-        card.className = `w-[35px] h-[35px] flex items-center justify-center text-white rounded cursor-pointer ${hasPaidOrder ? 'bg-green-500' : table.occupied ? 'bg-red-500' : 'bg-green-300'
-            }`;
+        card.className = `w-[35px] h-[35px] flex items-center justify-center text-white rounded cursor-pointer ${hasPaidOrder ? 'bg-green-500' : table.occupied ? 'bg-red-500' : 'bg-green-300'}`;
         card.textContent = table.id;
         card.addEventListener('click', () => {
             if (table.occupied) {
@@ -119,7 +132,7 @@ function openOrderModal() {
             fields: [
                 { name: 'name', type: 'text', placeholder: 'Nome do Cliente (opcional)' },
                 { name: 'phone', type: 'tel', placeholder: 'Telefone (opcional)' },
-                { name: 'paymentMethod', type: 'select', options: PAYMENT_METHODS }
+                { name: 'paymentMethod', type: 'select', options: config.PAYMENT_METHODS }
             ],
             customElements: [
                 {
@@ -132,8 +145,8 @@ function openOrderModal() {
                         if (totalDisplay) {
                             totalDisplay.innerHTML = `
                                 <p><strong>Valor dos Itens:</strong> R$ ${itemTotal.toFixed(2)}</p>
-                                ${isPackaged ? `<p><strong>Taxa de Entrega:</strong> R$ ${DELIVERY_FEE.toFixed(2)}</p>` : ''}
-                                <p><strong>Valor Total:</strong> R$ ${(itemTotal + (isPackaged ? DELIVERY_FEE : 0)).toFixed(2)}</p>
+                                ${isPackaged ? `<p><strong>Taxa de Entrega:</strong> R$ ${config.DELIVERY_FEE.toFixed(2)}</p>` : ''}
+                                <p><strong>Valor Total:</strong> R$ ${(itemTotal + (isPackaged ? config.DELIVERY_FEE : 0)).toFixed(2)}</p>
                             `;
                         }
                     }
@@ -191,10 +204,9 @@ function openReceiveOrderModal(tableId) {
                     order.statusHistory[order.status].end = new Date().toISOString().replace('Z', '-04:00');
                 }
                 order.receivedTime = new Date().toISOString().replace('Z', '-04:00');
-                order.payment = true; // Set payment to true when received
-                order.statusHistory['Recebido'] = { start: order.receivedTime, end: null }; // Keep Recebido as current status
+                order.payment = true;
+                order.statusHistory['Recebido'] = { start: order.receivedTime, end: null };
 
-                // Notify admin-order.js of payment update
                 const bc = new BroadcastChannel('order_updates');
                 bc.postMessage({
                     type: 'receivedOrder',
@@ -228,15 +240,15 @@ function saveOrder(values, isPackaged, onclient) {
         phone: values.phone || 'Sem telefone',
         onclient,
         tableNumber: selectedTable.toString(),
-        paymentMethod: values.paymentMethod === 'Selecione' ? 'Não informado' : values.paymentMethod,
+        paymentMethod: values.paymentMethod === config.PAYMENT_METHODS[0] ? 'Não informado' : values.paymentMethod,
         delivery: isPackaged,
         pickupTime: isPackaged ? null : '30 min',
         address: null,
         items: Object.entries(quantities).filter(([_, qty]) => qty > 0).map(([id, qty]) => ({ id: parseInt(id), qty })),
         total,
-        deliveryFee: isPackaged ? DELIVERY_FEE : 0,
+        deliveryFee: isPackaged ? config.DELIVERY_FEE : 0,
         status: 'Aguardando',
-        payment: false, // Default payment status
+        payment: false,
         statusHistory: { Aguardando: { start: new Date().toISOString().replace('Z', '-04:00'), end: null } }
     };
     let orders = JSON.parse(localStorage.getItem('orders') || '[]');
@@ -250,53 +262,49 @@ function saveOrder(values, isPackaged, onclient) {
     selectedTable = null;
 }
 
-document.getElementById('placeOrderBtn').addEventListener('click', () => {
-    console.log('Botão Fazer Pedido clicado');
-    openOrderModal();
-});
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadConfig();
+    document.getElementById('placeOrderBtn').addEventListener('click', () => {
+        console.log('Botão Fazer Pedido clicado');
+        openOrderModal();
+    });
 
-// Add BroadcastChannel listener for received orders or status updates
-const bc = new BroadcastChannel('order_updates');
-bc.onmessage = (event) => {
-    if (event.data.type === 'receivedOrder') {
-        const { orderId, tableNumber } = event.data;
-        const orders = JSON.parse(localStorage.getItem('orders') || '[]');
-        const order = orders.find(o => o.id === orderId);
-        if (order) {
-            order.payment = true;
-            order.receivedTime = new Date().toISOString().replace('Z', '-04:00');
-            order.statusHistory['Recebido'] = { start: order.receivedTime, end: null };
-            localStorage.setItem('orders', JSON.stringify(orders));
-        }
-        const tables = initializeTables();
-        const table = tables.find(t => t.id === parseInt(tableNumber));
-        if (table && order && order.status === 'Entregue') { // Only release table if status is "Entregue"
-            table.occupied = false;
-            localStorage.setItem('tables', JSON.stringify(tables));
-            console.log(`Table ${tableNumber} released (occupied set to false)`);
-        }
-    } else if (event.data.type === 'statusUpdate' && event.data.newStatus === 'Entregue') {
-        const { orderId } = event.data;
-        const orders = JSON.parse(localStorage.getItem('orders') || '[]');
-        const orderIndex = orders.findIndex(o => o.id === orderId);
-        if (orderIndex !== -1) {
-            const order = orders[orderIndex];
-            if (order.payment) { // Only move if payment is true
-                const removedOrder = orders.splice(orderIndex, 1)[0];
-                const controlOrders = JSON.parse(localStorage.getItem('controlOrders') || '[]');
-                controlOrders.push(removedOrder);
+    const bc = new BroadcastChannel('order_updates');
+    bc.onmessage = (event) => {
+        if (event.data.type === 'receivedOrder') {
+            const { orderId, tableNumber } = event.data;
+            const orders = JSON.parse(localStorage.getItem('orders') || '[]');
+            const order = orders.find(o => o.id === orderId);
+            if (order) {
+                order.payment = true;
+                order.receivedTime = new Date().toISOString().replace('Z', '-04:00');
+                order.statusHistory['Recebido'] = { start: order.receivedTime, end: null };
                 localStorage.setItem('orders', JSON.stringify(orders));
-                localStorage.setItem('controlOrders', JSON.stringify(controlOrders));
-                renderTableCards(); // Refresh table display if needed
             }
             const tables = initializeTables();
-            const table = tables.find(t => t.id === parseInt(order.tableNumber));
-            if (table && order.payment) { // Release table if payment is true
+            const table = tables.find(t => t.id === parseInt(tableNumber));
+            if (table && order && order.status === 'Entregue') {
                 table.occupied = false;
                 localStorage.setItem('tables', JSON.stringify(tables));
-                console.log(`Table ${order.tableNumber} released (occupied set to false)`);
+                console.log(`Table ${tableNumber} released (occupied set to false)`);
+            }
+            renderTableCards();
+        } else if (event.data.type === 'statusUpdate' && event.data.newStatus === 'Entregue') {
+            const { orderId, tableNumber } = event.data;
+            const orders = JSON.parse(localStorage.getItem('orders') || '[]');
+            const order = orders.find(o => o.id === orderId);
+            if (order && order.payment) {
+                const tables = initializeTables();
+                const table = tables.find(t => t.id === parseInt(tableNumber));
+                if (table) {
+                    table.occupied = false;
+                    localStorage.setItem('tables', JSON.stringify(tables));
+                    console.log(`Table ${tableNumber} released due to delivered and paid order (ID: ${orderId})`);
+                }
+                renderTableCards();
             }
         }
-    }
-};
-renderTableCards();
+    };
+
+    renderTableCards();
+});
