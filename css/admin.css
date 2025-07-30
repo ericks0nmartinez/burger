@@ -36,3 +36,30 @@ tbody tr:hover {
 button {
     transition: background-color 0.2s;
 }
+
+/* Style for the gear icon button */
+#configBtn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    /* Tailwind gap-2 */
+    font-size: 0.875rem;
+    /* Tailwind text-sm */
+}
+
+/* Responsive design for smaller screens */
+@media (max-width: 640px) {
+    #configBtn {
+        padding: 0.5rem;
+        /* Tailwind px-2 py-2 */
+        font-size: 0.75rem;
+        /* Smaller text on mobile */
+    }
+
+    .flex.justify-between {
+        flex-direction: column;
+        gap: 1rem;
+        /* Stack title and config button on mobile */
+        align-items: flex-start;
+    }
+}

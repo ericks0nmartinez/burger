@@ -5,41 +5,37 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestão de Produtos</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../css/admin.css">
     <link rel="stylesheet" href="../css/modal.css">
 </head>
 
 <body class="bg-gray-100">
-    <div class="container mx-auto p-6">
-        <h1 class="text-2xl font-bold mb-6">Gestão de Produtos</h1>
-        <div class="bg-white shadow-md rounded-lg overflow-hidden">
-            <table class="min-w-full">
-                <thead>
-                    <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Imagem</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome
-                        </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Valor
-                        </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Status</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Opções</th>
-                    </tr>
-                </thead>
-                <tbody id="productTable" class="bg-white divide-y divide-gray-200">
-                </tbody>
-            </table>
+    <div class="container mx-auto p-4">
+        <div class="flex justify-between items-center mb-4">
+            <h1 class="text-2xl font-bold">Gestão de Produtos</h1>
+            <button id="configBtn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 flex items-center">
+                ⚙️ Configurações
+            </button>
         </div>
-        <button id="addProductBtn"
-            class="mt-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Cadastrar</button>
+        <div class="mb-4">
+            <button id="addProductBtn"
+                class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Cadastrar</button>
+        </div>
+        <table class="min-w-full bg-white rounded shadow">
+            <thead>
+                <tr>
+                    <th class="px-6 py-4">Imagem</th>
+                    <th class="px-6 py-4">Nome</th>
+                    <th class="px-6 py-4">Valor</th>
+                    <th class="px-6 py-4">Status</th>
+                    <th class="px-6 py-4">Opções</th>
+                </tr>
+            </thead>
+            <tbody id="productTable"></tbody>
+        </table>
     </div>
-
-    <!-- Include the modal component -->
     <div id="modalContainer"></div>
-
     <script src="../js/modal.js"></script>
     <script src="../js/admin.js"></script>
 </body>
