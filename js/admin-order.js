@@ -2,7 +2,7 @@ let orders = [];
 let products = [];
 let cashRegisterOpen = JSON.parse(localStorage.getItem('cashRegisterOpen') || 'false');
 let cashRegisterOpenTime = localStorage.getItem('cashRegisterOpenTime') || null;
-const DELIVERY_FEE = 10.00; // Fixed delivery fee
+const PAYMENT_METHODS = ['Selecione', 'Dinheiro', "PIX", 'Cartão Débito', 'Cartão Crédito'];
 const DEBIT_CARD_FEE_RATE = 0.02; // 2% fee for debit card
 const CREDIT_CARD_FEE_RATE = 0.05; // 5% fee for credit card
 
@@ -161,6 +161,7 @@ function calculateCashRegisterTotals() {
     let cashTotal = 0;
     let debitCardTotal = 0;
     let creditCardTotal = 0;
+    let pixTotal = 0; // Assuming PIX is also a payment method
     let deliveryFees = 0;
     let overallTotal = 0;
 
@@ -177,6 +178,8 @@ function calculateCashRegisterTotals() {
                 debitCardTotal += order.total * (1 - DEBIT_CARD_FEE_RATE);
             } else if (order.paymentMethod === 'Cartão Crédito') {
                 creditCardTotal += order.total * (1 - CREDIT_CARD_FEE_RATE);
+            } else if (order.paymentMethod === 'PIX') {
+                pixTotal += order.total;
             }
             overallTotal += order.total;
             if (order.deliveryFee) {
@@ -190,6 +193,7 @@ function calculateCashRegisterTotals() {
         cashTotal: cashTotal.toFixed(2),
         debitCardTotal: debitCardTotal.toFixed(2),
         creditCardTotal: creditCardTotal.toFixed(2),
+        pixTotal: pixTotal.toFixed(2),
         deliveryFees: deliveryFees.toFixed(2),
         overallTotal: overallTotal.toFixed(2)
     };
@@ -201,8 +205,9 @@ function updateCashRegisterTotals() {
     totalsDiv.innerHTML = `
         <h2 class="text-lg font-semibold mb-2">Totais do Caixa</h2>
         <p><strong>Dinheiro:</strong> R$ ${totals.cashTotal}</p>
-        <p><strong>Cartão Débito (líquido):</strong> R$ ${totals.debitCardTotal}</p>
-        <p><strong>Cartão Crédito (líquido):</strong> R$ ${totals.creditCardTotal}</p>
+        <p><strong>Cartão Débito:</strong> R$ ${totals.debitCardTotal}</p>
+        <p><strong>Cartão Crédito:</strong> R$ ${totals.creditCardTotal}</p>
+        <p><strong>PIX:</strong> R$ ${totals.pixTotal}</p>
         <p><strong>Taxas de Entrega:</strong> R$ ${totals.deliveryFees}</p>
         <p><strong>Total Geral:</strong> R$ ${totals.overallTotal}</p>
     `;
@@ -344,7 +349,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         return sum + (product ? product.price * item.qty : 0);
                     }, 0);
                 }
-                order.deliveryFee = order.delivery ? DELIVERY_FEE : 0;
                 order.payment = order.payment || false; // Default to false if not set
             });
             localStorage.setItem('orders', JSON.stringify(orders));

@@ -4,6 +4,8 @@ const latitude = "-20.4899098";
 const longitude = "-54.6371336";
 const TAXA_POR_KM = 1.50; // R$ 1,50 por km
 const PREFIXOS_LOGRADOURO = ["Rua", "Avenida", "Travessa", "Alameda", "Praça", ""];
+const PAYMENT_METHODS = ['Selecione', 'Dinheiro', "PIX", 'Cartão Débito', 'Cartão Crédito'];
+
 
 async function fetchProducts() {
     try {
@@ -150,7 +152,7 @@ function openOrderModal() {
         fields: [
             { name: 'name', type: 'text', placeholder: 'Nome' },
             { name: 'phone', type: 'tel', placeholder: 'Telefone' },
-            { name: 'paymentMethod', type: 'select', options: ['Selecione', 'Dinheiro', 'Cartão Débito', 'Cartão Crédito'] }
+            { name: 'paymentMethod', type: 'select', options: PAYMENT_METHODS }
         ],
         customElements: [
             {

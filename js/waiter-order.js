@@ -3,6 +3,7 @@ let quantities = {};
 let selectedTable = null;
 const DELIVERY_FEE = 10.00;
 const TABLE_COUNT = 6;
+const PAYMENT_METHODS = ['Selecione', 'Dinheiro', "PIX", 'Cartão Débito', 'Cartão Crédito'];
 
 function initializeTables() {
     const tables = JSON.parse(localStorage.getItem('tables') || '[]');
@@ -118,7 +119,7 @@ function openOrderModal() {
             fields: [
                 { name: 'name', type: 'text', placeholder: 'Nome do Cliente (opcional)' },
                 { name: 'phone', type: 'tel', placeholder: 'Telefone (opcional)' },
-                { name: 'paymentMethod', type: 'select', options: ['Selecione', 'Dinheiro', 'Cartão Débito', 'Cartão Crédito'] }
+                { name: 'paymentMethod', type: 'select', options: PAYMENT_METHODS }
             ],
             customElements: [
                 {
