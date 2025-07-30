@@ -5,9 +5,9 @@ Graficos:
 
 
 adimin-order
-* mostrar apenas valores do caixa do dia atual
+* (Feito) mostrar apenas valores do caixa do dia atual
 
-* (feito)Abertura e fechar caixa: ja tem o controle dos pedidos, mas a abertura de caixa deve, controlar os pedidos do garçom e pelo site, isso irá mostrar o toda de entradas de pedidos e valores recebidos.
+* (feito) Abertura e fechar caixa: ja tem o controle dos pedidos, mas a abertura de caixa deve, controlar os pedidos do garçom e pelo site, isso irá mostrar o toda de entradas de pedidos e valores recebidos.
 
 * Abertura de mesas: o caixa deve denifir quantidade de mesas no começo será default 3 mesas.
 

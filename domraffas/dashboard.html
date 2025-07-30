@@ -7,60 +7,75 @@
     <title>Dashboard da Lanchonete</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../css/dashboard.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
 </head>
 
 <body class="bg-gray-100">
     <div class="container mx-auto p-4">
-        <h1 class="text-3xl font-bold mb-6">Dashboard da Lanchonete</h1>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div class="bg-white p-6 rounded-lg shadow">
-                <h2 class="text-xl font-semibold mb-4">Estatísticas Gerais</h2>
-                <p><strong>Lanches Vendidos:</strong> <span id="totalSnacks">0</span></p>
-                <p><strong>Receita Total (R$):</strong> <span id="totalRevenue">0.00</span></p>
+        <h1 class="text-2xl font-bold mb-4">Dashboard da Lanchonete</h1>
+        <div class="mb-4 flex space-x-4">
+            <div class="w-1/4">
+                <label for="yearFilter" class="block text-sm font-medium text-gray-700">Filtrar por Ano</label>
+                <select id="yearFilter" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"></select>
             </div>
-            <div class="bg-white p-6 rounded-lg shadow">
-                <h2 class="text-xl font-semibold mb-4">Receita por Período (R$)</h2>
-                <p><strong>Diária (25/07/2025):</strong> <span id="dailyRevenue">0.00</span></p>
-                <p><strong>Semanal (Semana Atual):</strong> <span id="weeklyRevenue">0.00</span></p>
-                <p><strong>Mensal (Julho 2025):</strong> <span id="monthlyRevenue">0.00</span></p>
+            <div class="w-1/4">
+                <label for="monthFilter" class="block text-sm font-medium text-gray-700">Filtrar por Mês</label>
+                <select id="monthFilter" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"></select>
             </div>
-            <div class="bg-white p-6 rounded-lg shadow">
-                <h2 class="text-xl font-semibold mb-4">Dias de Pico</h2>
-                <p><strong>Dia mais movimentado:</strong> <span id="peakDay">N/A</span></p>
-                <p><strong>Número de Pedidos:</strong> <span id="peakOrders">0</span></p>
+            <div class="w-1/4">
+                <label for="weekFilter" class="block text-sm font-medium text-gray-700">Filtrar por Semana</label>
+                <select id="weekFilter" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"></select>
+            </div>
+            <div class="w-1/4">
+                <label for="dayFilter" class="block text-sm font-medium text-gray-700">Filtrar por Dia</label>
+                <select id="dayFilter" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"></select>
             </div>
         </div>
-        <div class="mt-6">
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
-                <div class="bg-white p-6 rounded-lg shadow">
-                    <h2 class="text-xl font-semibold mb-4">Distribuição de Vendas por Item</h2>
-                    <canvas id="itemChart"></canvas>
-                </div>
-                <div class="bg-white p-6 rounded-lg shadow">
-                    <h2 class="text-xl font-semibold mb-4">Distribuição por Método de Pagamento</h2>
-                    <canvas id="paymentChart"></canvas>
-                </div>
-                <div class="bg-white p-6 rounded-lg shadow">
-                    <h2 class="text-xl font-semibold mb-4">Receita por Dia</h2>
-                    <canvas id="dailyChart"></canvas>
-                </div>
-                <div class="bg-white p-6 rounded-lg shadow">
-                    <h2 class="text-xl font-semibold mb-4">Receita por Semana</h2>
-                    <canvas id="weeklyChart"></canvas>
-                </div>
-                <div class="bg-white p-6 rounded-lg shadow">
-                    <h2 class="text-xl font-semibold mb-4">Receita por Mês</h2>
-                    <canvas id="monthlyChart"></canvas>
-                </div>
-                <div class="bg-white p-6 rounded-lg shadow">
-                    <h2 class="text-xl font-semibold mb-4">Receita por Ano</h2>
-                    <canvas id="yearlyChart"></canvas>
-                </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-xl font-semibold mb-2">Estatísticas Gerais</h2>
+                <p>Lanches Vendidos: <span id="totalSnacks">0</span></p>
+                <p>Receita Total (R$): <span id="totalRevenue">0.00</span></p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-xl font-semibold mb-2">Receita por Período (R$)</h2>
+                <p>Diária (30/07/2025): <span id="dailyRevenue">0.00</span></p>
+                <p>Semanal (Semana Atual): <span id="weeklyRevenue">0.00</span></p>
+                <p>Mensal (Julho 2025): <span id="monthlyRevenue">0.00</span></p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-xl font-semibold mb-2">Dias de Pico</h2>
+                <p>Dia mais movimentado: <span id="peakDay">N/A</span></p>
+                <p>Número de Pedidos: <span id="peakOrders">0</span></p>
+            </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6 mt-6">
+            <div class="bg-white p-6 rounded-lg shadow lg:col-span-3">
+                <h2 class="text-xl font-semibold mb-2">Distribuição de Vendas por Item</h2>
+                <canvas id="itemChart"></canvas>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow lg:col-span-3">
+                <h2 class="text-xl font-semibold mb-2">Distribuição por Método de Pagamento</h2>
+                <canvas id="paymentChart"></canvas>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow lg:col-span-6">
+                <h2 class="text-xl font-semibold mb-2">Receita por Dia</h2>
+                <canvas id="dailyChart"></canvas>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow lg:col-span-6">
+                <h2 class="text-xl font-semibold mb-2">Receita por Semana</h2>
+                <canvas id="weeklyChart"></canvas>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow lg:col-span-6">
+                <h2 class="text-xl font-semibold mb-2">Receita por Mês</h2>
+                <canvas id="monthlyChart"></canvas>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow lg:col-span-6">
+                <h2 class="text-xl font-semibold mb-2">Receita por Ano</h2>
+                <canvas id="yearlyChart"></canvas>
             </div>
         </div>
     </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
     <script src="../js/dashboard.js"></script>
 </body>
 

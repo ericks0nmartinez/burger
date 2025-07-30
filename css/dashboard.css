@@ -1,7 +1,6 @@
 canvas {
     max-width: 100%;
     height: auto !important;
-    /* Ensure consistent height */
 }
 
 body {
@@ -24,17 +23,16 @@ body {
     grid-template-columns: 1fr;
 }
 
-.md\\:grid-cols-2 {
+.md\:grid-cols-2 {
     grid-template-columns: repeat(2, 1fr);
 }
 
-.lg\\:grid-cols-3 {
+.lg\:grid-cols-3 {
     grid-template-columns: repeat(3, 1fr);
 }
 
-.lg\\:grid-cols-6 {
+.lg\:grid-cols-6 {
     grid-template-columns: repeat(6, 1fr);
-    /* Six columns for charts on large screens */
 }
 
 .bg-white {
@@ -95,27 +93,44 @@ body {
         font-size: 1rem;
     }
 
-    .lg\\:grid-cols-6 {
+    .lg\:grid-cols-6 {
         grid-template-columns: 1fr;
-        /* Stack on mobile */
+    }
+
+    .flex {
+        flex-direction: column;
+        space-x-4: 0;
+    }
+
+    .w-1\/4 {
+        width: 100%;
     }
 }
 
 @media (min-width: 768px) and (max-width: 1023px) {
-    .md\\:grid-cols-2 {
+    .md\:grid-cols-2 {
         grid-template-columns: repeat(2, 1fr);
-        /* Two columns on medium screens */
     }
 
-    .lg\\:grid-cols-6 {
+    .lg\:grid-cols-6 {
         grid-template-columns: repeat(3, 1fr);
-        /* Three columns on medium screens */
+    }
+
+    .flex {
+        flex-wrap: wrap;
+    }
+
+    .w-1\/4 {
+        width: 50%;
     }
 }
 
 @media (min-width: 1024px) {
-    .lg\\:grid-cols-6 {
+    .lg\:grid-cols-6 {
         grid-template-columns: repeat(6, 1fr);
-        /* Six columns on large screens */
+    }
+
+    .w-1\/4 {
+        width: 25%;
     }
 }

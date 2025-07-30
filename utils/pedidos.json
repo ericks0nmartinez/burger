@@ -1610,5 +1610,73 @@
         },
         "payment": true,
         "receivedTime": "2025-07-30T14:43:12.199-04:00"
+    },
+    {
+        "id": 1753893043322,
+        "time": "2025-07-30T16:30:43.322-04:00",
+        "name": "Felipe Della Corte",
+        "phone": "67984726820",
+        "onclient": "true",
+        "paymentMethod": "Cartão Débito",
+        "delivery": true,
+        "address": {
+            "address": "Rua dom aquino",
+            "number": "2350",
+            "neighborhood": "Centro"
+        },
+        "distancia": "4.71",
+        "items": [
+            {
+                "id": 1,
+                "qty": 1
+            },
+            {
+                "id": 2,
+                "qty": 1
+            },
+            {
+                "id": 3,
+                "qty": 1
+            },
+            {
+                "id": 4,
+                "qty": 1
+            },
+            {
+                "id": 5,
+                "qty": 1
+            }
+        ],
+        "total": 120,
+        "deliveryFee": 7,
+        "status": "Entregue",
+        "statusHistory": {
+            "Aguardando": {
+                "start": "2025-07-30T16:30:43.322-04:00",
+                "end": "2025-07-30T16:31:05.427-04:00"
+            },
+            "Preparando": {
+                "start": "2025-07-30T16:31:05.427-04:00",
+                "end": "2025-07-30T16:31:08.091-04:00"
+            },
+            "Pronto": {
+                "start": "2025-07-30T16:31:08.091-04:00",
+                "end": "2025-07-30T16:31:10.475-04:00"
+            },
+            "A caminho": {
+                "start": "2025-07-30T16:31:10.475-04:00",
+                "end": "2025-07-30T16:31:18.459-04:00"
+            },
+            "Entregue": {
+                "start": "2025-07-30T16:31:18.459-04:00",
+                "end": "2025-07-30T16:31:18.459-04:00"
+            },
+            "Recebido": {
+                "start": "2025-07-30T16:31:35.987-04:00",
+                "end": null
+            }
+        },
+        "payment": true,
+        "receivedTime": "2025-07-30T16:31:35.987-04:00"
     }
 ]

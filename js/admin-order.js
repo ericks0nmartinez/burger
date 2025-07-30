@@ -82,7 +82,7 @@ function markAsReceived(orderId) {
                 }
             }
 
-            // Notify waiter-order.js of payment update
+            // Notify waiter-order.js and delivery-order.js of payment update
             const bc = new BroadcastChannel('order_updates');
             bc.postMessage({
                 type: 'receivedOrder',
@@ -117,22 +117,45 @@ function updateStatus(id, newStatus) {
     order.statusHistory[newStatus] = { start: new Date().toISOString().replace('Z', '-04:00'), end: newStatus === 'Entregue' ? new Date().toISOString().replace('Z', '-04:00') : null };
     order.status = newStatus;
 
-    // Move to controlOrders and update table status only if status is "Entregue" and payment is true
-    if (newStatus === 'Entregue' && order.payment) {
-        console.log(`Moving order ${id} to controlOrders`);
-        const removedOrder = orders.splice(orderIndex, 1)[0];
-        moveToControl(removedOrder);
-
-        // Update table status only when both conditions are met
-        let tables = JSON.parse(localStorage.getItem('tables') || '[]');
-        const table = tables.find(t => t.id === parseInt(order.tableNumber));
-        if (table && table.occupied) {
-            table.occupied = false;
-            localStorage.setItem('tables', JSON.stringify(tables));
-            console.log(`Table ${order.tableNumber} released (occupied set to false)`);
+    // Add or update in delivery-orders when status changes to "A caminho"
+    if (newStatus === 'A caminho' && order.delivery) {
+        let deliveryOrders = JSON.parse(localStorage.getItem('delivery-orders') || '[]');
+        const existingDeliveryOrderIndex = deliveryOrders.findIndex(o => o.id === order.id);
+        if (existingDeliveryOrderIndex === -1) {
+            deliveryOrders.push({ ...order }); // Add a copy of the order
+            console.log(`Order ${id} added to delivery-orders`);
+        } else {
+            deliveryOrders[existingDeliveryOrderIndex] = { ...order }; // Update existing order
+            console.log(`Order ${id} updated in delivery-orders`);
         }
-    } else if (newStatus === 'Entregue' && !order.payment) {
-        console.log(`Order ${id} not moved to controlOrders: payment is false`);
+        localStorage.setItem('delivery-orders', JSON.stringify(deliveryOrders));
+    }
+
+    // Handle "Entregue" status
+    if (newStatus === 'Entregue') {
+        // Remove from delivery-orders
+        let deliveryOrders = JSON.parse(localStorage.getItem('delivery-orders') || '[]');
+        deliveryOrders = deliveryOrders.filter(o => o.id !== id);
+        localStorage.setItem('delivery-orders', JSON.stringify(deliveryOrders));
+        console.log(`Order ${id} removed from delivery-orders`);
+
+        // Move to controlOrders only if payment is true
+        if (order.payment) {
+            console.log(`Moving order ${id} to controlOrders`);
+            const removedOrder = orders.splice(orderIndex, 1)[0];
+            moveToControl(removedOrder);
+
+            // Update table status if applicable
+            let tables = JSON.parse(localStorage.getItem('tables') || '[]');
+            const table = tables.find(t => t.id === parseInt(order.tableNumber));
+            if (table && table.occupied) {
+                table.occupied = false;
+                localStorage.setItem('tables', JSON.stringify(tables));
+                console.log(`Table ${order.tableNumber} released (occupied set to false)`);
+            }
+        } else {
+            console.log(`Order ${id} remains in orders: payment is false`);
+        }
     }
 
     localStorage.setItem('orders', JSON.stringify(orders));
@@ -154,21 +177,33 @@ function moveToControl(order) {
     let controlOrders = JSON.parse(localStorage.getItem('controlOrders') || '[]');
     controlOrders.push(order);
     localStorage.setItem('controlOrders', JSON.stringify(controlOrders));
-    console.log(`Order ${order.id} moved to controlOrders`);
+    // Remove from delivery-orders if present
+    let deliveryOrders = JSON.parse(localStorage.getItem('delivery-orders') || '[]');
+    deliveryOrders = deliveryOrders.filter(o => o.id !== order.id);
+    localStorage.setItem('delivery-orders', JSON.stringify(deliveryOrders));
+    console.log(`Order ${order.id} moved to controlOrders and removed from delivery-orders`);
 }
 
 function calculateCashRegisterTotals() {
     let cashTotal = 0;
     let debitCardTotal = 0;
     let creditCardTotal = 0;
-    let pixTotal = 0; // Assuming PIX is also a payment method
+    let pixTotal = 0;
     let deliveryFees = 0;
     let overallTotal = 0;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Start of today
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1); // Start of tomorrow
 
     const allOrders = [
         ...JSON.parse(localStorage.getItem('orders') || '[]'),
         ...JSON.parse(localStorage.getItem('controlOrders') || '[]')
-    ];
+    ].filter(order => {
+        const orderDate = new Date(order.time);
+        return orderDate >= today && orderDate < tomorrow;
+    });
 
     allOrders.forEach(order => {
         if (order.total && order.payment) { // Only count paid orders
@@ -203,7 +238,7 @@ function updateCashRegisterTotals() {
     const totals = calculateCashRegisterTotals();
     const totalsDiv = document.getElementById('cashRegisterTotals');
     totalsDiv.innerHTML = `
-        <h2 class="text-lg font-semibold mb-2">Totais do Caixa</h2>
+        <h2 class="text-lg font-semibold mb-2">Totais do Caixa (Hoje)</h2>
         <p><strong>Dinheiro:</strong> R$ ${totals.cashTotal}</p>
         <p><strong>Cartão Débito:</strong> R$ ${totals.debitCardTotal}</p>
         <p><strong>Cartão Crédito:</strong> R$ ${totals.creditCardTotal}</p>
