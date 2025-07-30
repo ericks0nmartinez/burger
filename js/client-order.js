@@ -6,6 +6,18 @@ const TAXA_POR_KM = 1.50; // R$ 1,50 por km
 const PREFIXOS_LOGRADOURO = ["Rua", "Avenida", "Travessa", "Alameda", "Praça", ""];
 const PAYMENT_METHODS = ['Selecione', 'Dinheiro', "PIX", 'Cartão Débito', 'Cartão Crédito'];
 
+// Helper function to round delivery fee to nearest 50 cents or whole real
+function roundToNearest50CentsOrReal(value) {
+    const integerPart = Math.floor(value);
+    const decimalPart = value - integerPart;
+    if (decimalPart <= 0.15) {
+        return integerPart.toFixed(2);
+    } else if (decimalPart <= 0.65) {
+        return (integerPart + 0.50).toFixed(2);
+    } else {
+        return (integerPart + 1).toFixed(2);
+    }
+}
 
 async function fetchProducts() {
     try {
@@ -133,7 +145,8 @@ async function obterCoordenadas(enderecoBase, numero, bairro) {
 
     // Calcula a distância
     const distancia = calcularDistancia(parseFloat(latitude), parseFloat(longitude), resultado.lat, resultado.lon);
-    const taxaEntrega = (distancia * TAXA_POR_KM).toFixed(2);
+    const taxaEntregaRaw = distancia * TAXA_POR_KM;
+    const taxaEntrega = roundToNearest50CentsOrReal(taxaEntregaRaw);
     return { ...resultado, enderecoUsado, distancia, taxaEntrega };
 }
 
