@@ -5,7 +5,9 @@ Graficos:
 
 
 adimin-order
-* Abertura e fechar caixa: ja tem o controle dos pedidos, mas a abertura de caixa deve, controlar os pedidos do garçom e pelo site, isso irá mostrar o toda de entradas de pedidos e valores recebidos.
+* mostrar apenas valores do caixa do dia atual
+
+* (feito)Abertura e fechar caixa: ja tem o controle dos pedidos, mas a abertura de caixa deve, controlar os pedidos do garçom e pelo site, isso irá mostrar o toda de entradas de pedidos e valores recebidos.
 
 * Abertura de mesas: o caixa deve denifir quantidade de mesas no começo será default 3 mesas.
 
@@ -16,7 +18,7 @@ adimin-order
 witer-order
 * Garçom: A quatidade de mesas deve aparece para o garçom, que também terá a possibilidade de definir um botão + para nomear , exemplo carro, casa, isso é para os clientes que pedem e não sentam em mesas.
 
-* Após clicar nas mesas disponiveis ou clicar no + e definir o nome o garçom vera a lista de lanches permitindo escolher e enviar o pedido para o caixa admin-order
+* (feito)Após clicar nas mesas disponiveis ou clicar no + e definir o nome o garçom vera a lista de lanches permitindo escolher e enviar o pedido para o caixa admin-order
 
 * Quando passar  mouse ou clicar na imagem deve expandir a imagem do lanche
 
@@ -28,6 +30,6 @@ admin-control
 client-order
 * (feito) Ajustar formulario para ocultar o tempo de retirada quando cliente marcar "Entrega (se não marcado, será retirada)"  e trocar só para "Entrega"
 
-* Calcular endereço para mostrar total do preço com a taxa
+* (feito)Calcular endereço para mostrar total do preço com a taxa
 
 * Quando passar  mouse ou clicar na imagem deve expandir a imagem do lanche

@@ -82,7 +82,7 @@ function openModalNow(config) {
     if (customElements) {
         customElements.forEach(element => {
             const elemDiv = document.createElement('div');
-            elemDiv.className = 'mb-4';
+            elemDiv.className = 'mb-2';
             if (element.type === 'checkbox') {
                 elemDiv.innerHTML = `
                     <label class="flex items-center">
@@ -99,7 +99,7 @@ function openModalNow(config) {
                 label.className = 'text-sm font-medium text-gray-700';
                 label.textContent = element.label;
                 const radioGroup = document.createElement('div');
-                radioGroup.className = 'ml-6 space-y-2';
+                radioGroup.className = 'flex ml-6 space-x-4 mt-2';
                 radioGroup.id = 'pickupTimeGroup';
                 element.options.forEach(opt => {
                     const radioDiv = document.createElement('div');
@@ -143,7 +143,7 @@ function openModalNow(config) {
     if (fields) {
         fields.forEach(field => {
             const fieldDiv = document.createElement('div');
-            fieldDiv.className = 'mb-4';
+            fieldDiv.className = 'mb-2';
             if (field.type === 'select') {
                 fieldDiv.innerHTML = `
                     <label for="${field.name}" class="block text-sm font-medium text-gray-700">${field.placeholder}</label>

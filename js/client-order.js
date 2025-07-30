@@ -148,11 +148,11 @@ function openOrderModal() {
 
     openModal({
         title: 'Confirmar Pedido',
-        description: `Preencha os dados do pedido. Valor dos itens: R$ ${itemTotal.toFixed(2)}`,
+        description: `Preencha os dados para finalziar o pedido`,
         fields: [
             { name: 'name', type: 'text', placeholder: 'Nome' },
             { name: 'phone', type: 'tel', placeholder: 'Telefone' },
-            { name: 'paymentMethod', type: 'select', options: PAYMENT_METHODS }
+            { name: 'paymentMethod', type: 'select', options: PAYMENT_METHODS, placeholder: 'Pagamento' }
         ],
         customElements: [
             {
@@ -191,7 +191,7 @@ function openOrderModal() {
                 type: 'radioGroup',
                 name: 'pickupTime',
                 label: 'Horário de Retirada (selecione uma opção)',
-                options: ['30 min', '60 min', '90 min']
+                options: ['15 min', '30 min', '45 min', '60 min']
             },
             {
                 type: 'conditionalInputs',
@@ -202,7 +202,7 @@ function openOrderModal() {
                     { name: 'neighborhood', type: 'text', placeholder: 'Bairro (opcional)' }
                 ],
                 extra: `
-                    <button id="calcularTaxaBtn" class="mt-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">Calcular Taxa</button>
+                    <button id="calcularTaxaBtn" class="mt-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">Calcular entrega</button>
                 `
             },
             {
@@ -246,7 +246,7 @@ function openOrderModal() {
         initialValues: {}
     });
 
-    // Adiciona o evento ao botão "Calcular Taxa" após o modal ser renderizado
+    // Adiciona o evento ao botão "Calcular entrega" após o modal ser renderizado
     setTimeout(() => {
         const calcularTaxaBtn = document.getElementById('calcularTaxaBtn');
         if (calcularTaxaBtn) {
