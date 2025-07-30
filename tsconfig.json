@@ -1,0 +1,18 @@
+{
+    "compilerOptions": {
+        "target": "ESNext",
+        "module": "CommonJS",
+        "moduleResolution": "node",
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "outDir": "./dist",
+        "rootDir": "./",
+        "types": ["node"],
+        "allowImportingTsExtensions": true, // Permite importações com .ts
+        "noEmit": true
+    },
+    "include": ["backend/**/*"],
+    "exclude": ["node_modules"]
+}

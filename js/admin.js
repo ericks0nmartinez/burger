@@ -1,42 +1,34 @@
 let products = [];
-let config = {};
+const apiUrl = "http://192.168.1.67:3000";
 
-// Fetch config from config.json
-async function loadConfig() {
+// Função para obter o próximo ID disponível
+async function getNextAvailableId() {
     try {
-        const response = await fetch('../utils/config.json');
-        if (!response.ok) throw new Error(`Erro ao carregar configuração: ${response.status} - ${response.statusText}`);
-        config = await response.json();
-        console.log('Configuração carregada:', config);
+        const response = await fetch(`${apiUrl}/api/products/burgers`);
+        if (!response.ok) throw new Error('Erro ao carregar produtos');
+        const result = await response.json();
+        const products = result.data || [];
+
+        if (products.length === 0) return 1;
+        const maxId = Math.max(...products.map(p => p.id));
+        return maxId + 1;
     } catch (error) {
-        console.error('Erro ao carregar config.json:', error);
-        alert('Não foi possível carregar a configuração. Usando valores padrão.');
-        config = {
-            PAYMENT_METHODS: ['Selecione', 'Dinheiro', 'PIX', 'Cartão Débito', 'Cartão Crédito'],
-            DEBIT_CARD_FEE_RATE: 0.02,
-            CREDIT_CARD_FEE_RATE: 0.05,
-            TAXA_POR_KM: 1.5,
-            PREFIXOS_LOGRADOURO: ['Rua', 'Avenida', 'Travessa', 'Alameda', 'Praça', ''],
-            latitude: '-20.4899098',
-            longitude: '-54.6371336',
-            DELIVERY_FEE: 10.0,
-            TABLE_COUNT: 6
-        };
+        console.error('Erro ao obter próximo ID:', error);
+        throw error;
     }
 }
 
-// Fetch products from products.json
+// Fetch products from API
 async function fetchProducts() {
     try {
-        const response = await fetch('../utils/products.json');
+        const response = await fetch(`${apiUrl}/api/products/burgers`);
         if (!response.ok) throw new Error('Erro ao carregar produtos');
-        products = await response.json();
-        products = products.map(product => ({ ...product, status: product.status || 'Ativo' }));
+        const result = await response.json();
+        products = result.data || [];
         renderProducts();
-        console.log('Fetch terminou o carregamento:', response.url);
     } catch (error) {
         console.error('Erro:', error);
-        alert('Não foi possível carregar os produtos. Verifique o arquivo products.json.');
+        alert('Não foi possível carregar os produtos. Verifique a conexão com a API.');
     }
 }
 
@@ -54,6 +46,7 @@ function renderProducts() {
             <td class="px-6 py-4 whitespace-nowrap">
                 <button onclick="toggleStatus(${product.id})" class="text-blue-500 hover:underline">${product.status === 'Ativo' ? 'Inativar' : 'Ativar'}</button>
                 <button onclick="editProduct(${product.id})" class="ml-2 text-blue-500 hover:underline">Editar</button>
+                <button onclick="deleteProduct(${product.id})" class="ml-2 text-red-500 hover:underline">Excluir</button>
             </td>
         `;
         tableBody.appendChild(row);
@@ -61,11 +54,46 @@ function renderProducts() {
 }
 
 // Toggle product status
-function toggleStatus(id) {
-    const product = products.find(p => p.id === id);
-    product.status = product.status === 'Ativo' ? 'Inativo' : 'Ativo';
-    renderProducts();
-    // Note: To persist changes, you would need a backend to save to products.json
+async function toggleStatus(id) {
+    try {
+        const product = products.find(p => p.id === id);
+        const newStatus = product.status === 'Ativo' ? 'Inativo' : 'Ativo';
+
+        const response = await fetch(`${apiUrl}/api/products/burgers/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: newStatus })
+        });
+
+        if (!response.ok) throw new Error('Erro ao atualizar status');
+
+        product.status = newStatus;
+        renderProducts();
+        alert('Status atualizado com sucesso!');
+    } catch (error) {
+        console.error('Erro:', error);
+        alert('Não foi possível atualizar o status do produto.');
+    }
+}
+
+// Delete product
+async function deleteProduct(id) {
+    if (!confirm('Tem certeza que deseja excluir este produto?')) return;
+
+    try {
+        const response = await fetch(`${apiUrl}/api/products/burgers/${id}`, {
+            method: 'DELETE'
+        });
+
+        if (!response.ok) throw new Error('Erro ao excluir produto');
+
+        products = products.filter(p => p.id !== id);
+        renderProducts();
+        alert('Produto excluído com sucesso!');
+    } catch (error) {
+        console.error('Erro:', error);
+        alert('Não foi possível excluir o produto.');
+    }
 }
 
 // Modal configuration for product
@@ -73,9 +101,10 @@ const productModalConfig = {
     title: 'Cadastrar Produto',
     description: 'Preencha os campos abaixo para adicionar.',
     fields: [
-        { name: 'imageUrl', type: 'text', placeholder: 'URL da Imagem' },
-        { name: 'productName', type: 'text', placeholder: 'Nome do Produto' },
-        { name: 'productPrice', type: 'number', placeholder: 'Valor' }
+        { name: 'image', type: 'text', placeholder: 'URL da Imagem' },
+        { name: 'name', type: 'text', placeholder: 'Nome do Produto' },
+        { name: 'price', type: 'number', placeholder: 'Valor' },
+        { name: 'description', type: 'text', placeholder: 'Descrição' }
     ]
 };
 
@@ -86,97 +115,86 @@ function editProduct(id) {
         ...productModalConfig,
         title: 'Editar Produto',
         description: 'Altere os campos abaixo para editar o produto.',
-        onSave: (values) => {
-            const product = products.find(p => p.id === id);
-            product.image = values.imageUrl;
-            product.name = values.productName;
-            product.price = parseFloat(values.productPrice);
-            renderProducts();
-            // Note: To persist changes, you would need a backend to save to products.json
-        },
-        initialValues: {
-            imageUrl: product.image,
-            productName: product.name,
-            productPrice: product.price
-        }
-    });
-}
-
-// Modal configuration for editing config.json
-function openConfigModal() {
-    openModal({
-        title: 'Editar Configurações do Sistema',
-        description: 'Altere os valores abaixo para configurar o sistema.',
-        fields: [
-            { name: 'PAYMENT_METHODS', type: 'text', placeholder: 'Métodos de Pagamento (separados por vírgula)' },
-            { name: 'DEBIT_CARD_FEE_RATE', type: 'number', placeholder: 'Taxa de Cartão de Débito (%)' },
-            { name: 'CREDIT_CARD_FEE_RATE', type: 'number', placeholder: 'Taxa de Cartão de Crédito (%)' },
-            { name: 'TAXA_POR_KM', type: 'number', placeholder: 'Taxa por KM (R$)' },
-            { name: 'PREFIXOS_LOGRADOURO', type: 'text', placeholder: 'Prefixos de Logradouro (separados por vírgula)' },
-            { name: 'latitude', type: 'number', placeholder: 'Latitude' },
-            { name: 'longitude', type: 'number', placeholder: 'Longitude' },
-            { name: 'DELIVERY_FEE', type: 'number', placeholder: 'Taxa de Entrega (R$)' },
-            { name: 'TABLE_COUNT', type: 'number', placeholder: 'Número de Mesas' }
-        ],
-        onSave: (values) => {
+        onSave: async (values) => {
             try {
-                // Validate and process inputs
-                const newConfig = {
-                    PAYMENT_METHODS: values.PAYMENT_METHODS.split(',').map(v => v.trim()).filter(v => v),
-                    DEBIT_CARD_FEE_RATE: parseFloat(values.DEBIT_CARD_FEE_RATE) / 100,
-                    CREDIT_CARD_FEE_RATE: parseFloat(values.CREDIT_CARD_FEE_RATE) / 100,
-                    TAXA_POR_KM: parseFloat(values.TAXA_POR_KM),
-                    PREFIXOS_LOGRADOURO: values.PREFIXOS_LOGRADOURO.split(',').map(v => v.trim()).filter(v => v),
-                    latitude: values.latitude,
-                    longitude: values.longitude,
-                    DELIVERY_FEE: parseFloat(values.DELIVERY_FEE),
-                    TABLE_COUNT: parseInt(values.TABLE_COUNT)
+                const updatedProduct = {
+                    ...product,
+                    name: values.name,
+                    price: parseFloat(values.price),
+                    description: values.description,
+                    image: values.image
                 };
-                // Validate numeric fields
-                if (isNaN(newConfig.DEBIT_CARD_FEE_RATE) || isNaN(newConfig.CREDIT_CARD_FEE_RATE) ||
-                    isNaN(newConfig.TAXA_POR_KM) || isNaN(newConfig.DELIVERY_FEE) || isNaN(newConfig.TABLE_COUNT)) {
-                    throw new Error('Campos numéricos inválidos. Preencha com valores válidos.');
-                }
-                config = newConfig;
-                localStorage.setItem('config', JSON.stringify(config));
-                const bc = new BroadcastChannel('config_updates');
-                bc.postMessage({ type: 'configUpdated', config });
-                alert('Configurações salvas localmente. Implemente um backend para persistir em config.json.');
+
+                const response = await fetch(`${apiUrl}/api/products/burgers/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updatedProduct)
+                });
+
+                if (!response.ok) throw new Error('Erro ao atualizar produto');
+
+                const result = await response.json();
+                const index = products.findIndex(p => p.id === id);
+                products[index] = result.data;
+                renderProducts();
+                alert('Produto atualizado com sucesso!');
             } catch (error) {
-                console.error('Erro ao salvar configurações:', error);
-                alert(`Erro: ${error.message}`);
+                console.error('Erro:', error);
+                alert('Não foi possível atualizar o produto.');
             }
         },
         initialValues: {
-            PAYMENT_METHODS: config.PAYMENT_METHODS.join(', '),
-            DEBIT_CARD_FEE_RATE: (config.DEBIT_CARD_FEE_RATE * 100).toFixed(2),
-            CREDIT_CARD_FEE_RATE: (config.CREDIT_CARD_FEE_RATE * 100).toFixed(2),
-            TAXA_POR_KM: config.TAXA_POR_KM.toFixed(2),
-            PREFIXOS_LOGRADOURO: config.PREFIXOS_LOGRADOURO.join(', '),
-            latitude: config.latitude,
-            longitude: config.longitude,
-            DELIVERY_FEE: config.DELIVERY_FEE.toFixed(2),
-            TABLE_COUNT: config.TABLE_COUNT
+            image: product.image,
+            name: product.name,
+            price: product.price,
+            description: product.description
         }
     });
 }
 
 // Open modal for new product
-document.getElementById('addProductBtn').addEventListener('click', () => {
-    openModal({
-        ...productModalConfig,
-        onSave: (values) => {
-            const newId = products.length ? Math.max(...products.map(p => p.id)) + 1 : 1;
-            products.push({ id: newId, name: values.productName, price: parseFloat(values.productPrice), description: '', image: values.imageUrl, status: 'Ativo' });
-            renderProducts();
-            // Note: To persist changes, you would need a backend to save to products.json
-        }
-    });
+document.getElementById('addProductBtn').addEventListener('click', async () => {
+    try {
+        const nextId = await getNextAvailableId();
+
+        openModal({
+            ...productModalConfig,
+            onSave: async (values) => {
+                try {
+                    const newProduct = {
+                        id: nextId,
+                        name: values.name,
+                        price: parseFloat(values.price),
+                        description: values.description,
+                        image: values.image,
+                        status: 'Ativo'
+                    };
+
+                    const response = await fetch(`${apiUrl}/api/products/burgers`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(newProduct)
+                    });
+
+                    if (!response.ok) throw new Error('Erro ao criar produto');
+
+                    const result = await response.json();
+                    products.push(result.data);
+                    renderProducts();
+                    alert('Produto criado com sucesso!');
+                } catch (error) {
+                    console.error('Erro:', error);
+                    alert('Não foi possível criar o produto.');
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Erro ao preparar novo produto:', error);
+        alert('Não foi possível preparar o cadastro de novo produto.');
+    }
 });
 
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
-    await loadConfig();
-    document.getElementById('configBtn').addEventListener('click', openConfigModal);
     fetchProducts();
 });

@@ -3,7 +3,7 @@ let modalQueue = [];
 
 async function loadModal() {
     try {
-        const modalPaths = ['./modal.html', '../components/modal.html', '/components/modal.html', '/burger/components/modal.html'];
+        const modalPaths = ['../components/modal.html',];
         let response;
         for (const path of modalPaths) {
             console.log('Tentando carregar modal de:', path);
