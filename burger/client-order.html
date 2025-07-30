@@ -4,32 +4,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Escolha seu lanche</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <title>Escolha seu Lanche</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="../css/client-order.css">
+    <link rel="stylesheet" href="../css/modal.css">
 </head>
 
-<body>
-    <div class="container mx-auto p-4">
-        <h1 class="text-2xl font-bold mb-4">Escolha seu lanche</h1>
-        <table id="productTable" class="w-full text-sm text-left">
+<body class="bg-gray-100 min-h-screen p-4">
+    <div class="max-w-4xl mx-auto bg-white p-6 rounded-lg shadow-lg">
+        <h1 class="text-2xl font-bold mb-4 text-center">Escolha seu Lanche</h1>
+        <table class="w-full border-collapse">
             <thead>
-                <tr>
+                <tr class="bg-gray-200">
                     <th class="px-4 py-2">Imagem</th>
                     <th class="px-4 py-2">Nome</th>
                     <th class="px-4 py-2">Preço</th>
                     <th class="px-4 py-2">Quantidade</th>
                 </tr>
             </thead>
-            <tbody></tbody>
+            <tbody id="productTable"></tbody>
         </table>
-        <button id="placeOrderBtn" class="mt-4 px-4 py-2 bg-green-500 text-white rounded disabled:bg-gray-400"
+        <button id="placeOrderBtn"
+            class="mt-4 w-full bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700 disabled:bg-gray-400"
             disabled>Fazer Pedido</button>
         <div id="clientOrder" class="mt-6"></div>
     </div>
     <div id="modalContainer"></div>
-    <script src="../js/modal.js"></script>
     <script src="../js/client-order.js"></script>
+    <script src="../js/modal.js"></script>
 </body>
 
 </html>

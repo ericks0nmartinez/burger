@@ -76,7 +76,7 @@ function openModalNow(config) {
     }
 
     modalTitle.textContent = title || 'Título do Modal';
-    modalDescription.innerHTML = description || ''; // Use innerHTML to support <br> tags
+    modalDescription.innerHTML = description || '';
     modalFields.innerHTML = '';
 
     if (customElements) {
@@ -126,6 +126,11 @@ function openModalNow(config) {
                     `;
                     inputGroup.appendChild(fieldDiv);
                 });
+                if (element.extra) {
+                    const extraDiv = document.createElement('div');
+                    extraDiv.innerHTML = element.extra;
+                    inputGroup.appendChild(extraDiv);
+                }
                 elemDiv.appendChild(inputGroup);
                 modalFields.appendChild(elemDiv);
             } else if (element.type === 'custom') {
