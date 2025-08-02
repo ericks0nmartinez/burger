@@ -33,3 +33,11 @@ client-order
 * (feito)Calcular endereço para mostrar total do preço com a taxa
 
 * Quando passar  mouse ou clicar na imagem deve expandir a imagem do lanche
+
+
+Corrigir
+
+admin-order
+Ajustar pagamento se tiver pago some o botão pago
+
+Tem que criar controlOrdersControllers deleveryOrdersControllers para enviar após mudar os status

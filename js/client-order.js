@@ -1,24 +1,45 @@
 let products = [];
 let quantities = {};
 let config = {};
+const apiUrl = "http://192.168.1.67:3000";
 
 async function loadConfig() {
     try {
-        const response = await fetch('../utils/config.json');
+        const response = await fetch(`${apiUrl}/api/config`);
         if (!response.ok) {
             throw new Error(`Erro ao carregar configuração: ${response.status} - ${response.statusText}`);
         }
-        config = await response.json();
+        const result = await response.json();
+        config = result.data || {};
     } catch (error) {
-        console.error('Erro ao carregar config.json:', error);
-        alert('Não foi possível carregar a configuração. Verifique o arquivo config.json.');
-        config = {
-            PAYMENT_METHODS: ['Selecione', 'Dinheiro', 'PIX', 'Cartão Débito', 'Cartão Crédito'],
-            TAXA_POR_KM: 1.5,
-            PREFIXOS_LOGRADOURO: ['Rua', 'Avenida', 'Travessa', 'Alameda', 'Praça', ''],
-            latitude: '-20.4899098',
-            longitude: '-54.6371336'
-        };
+        console.error('Erro ao carregar configuração:', error);
+        alert('Não foi possível carregar a configuração. Verifique a conexão com a API.');
+    }
+}
+
+async function fetchProducts() {
+    try {
+        const response = await fetch(`${apiUrl}/api/products/burgers`);
+        if (!response.ok) {
+            throw new Error(`Erro ao carregar produtos: ${response.status} - ${response.statusText}`);
+        }
+        const result = await response.json();
+        products = Array.isArray(result.data) ? result.data.filter(p => p.status === 'Ativo').map(p => ({ ...p, status: p.status || 'Ativo' })) : [];
+
+        const clientOrder = JSON.parse(localStorage.getItem('order-client') || 'null');
+        if (clientOrder && !clientOrder.total) {
+            clientOrder.total = calculateOrderTotal(clientOrder.items);
+            localStorage.setItem('order-client', JSON.stringify(clientOrder));
+        }
+
+        renderProducts();
+        renderClientOrder();
+    } catch (error) {
+        console.error('Erro:', error);
+        alert('Não foi possível carregar os produtos. Verifique a conexão com a API.');
+        products = [];
+        renderProducts();
+        renderClientOrder();
     }
 }
 
@@ -31,33 +52,6 @@ function roundToNearest50CentsOrReal(value) {
         return (integerPart + 0.50).toFixed(2);
     } else {
         return (integerPart + 1).toFixed(2);
-    }
-}
-
-async function fetchProducts() {
-    try {
-        const response = await fetch('../utils/products.json');
-        if (!response.ok) {
-            throw new Error(`Erro ao carregar produtos: ${response.status} - ${response.statusText}`);
-        }
-        const data = await response.json();
-        if (!Array.isArray(data)) {
-            throw new Error('Dados de produtos não estão em formato de array');
-        }
-        products = data.map(p => ({ ...p, status: p.status || 'Ativo' }));
-        const clientOrder = JSON.parse(localStorage.getItem('order-client') || 'null');
-        if (clientOrder && !clientOrder.total) {
-            clientOrder.total = calculateOrderTotal(clientOrder.items);
-            localStorage.setItem('order-client', JSON.stringify(clientOrder));
-        }
-        renderProducts();
-        renderClientOrder();
-    } catch (error) {
-        console.error('Erro:', error);
-        alert('Não foi possível carregar os produtos. Verifique o arquivo products.json.');
-        products = [];
-        renderProducts();
-        renderClientOrder();
     }
 }
 
@@ -316,7 +310,7 @@ function validateOrderForm(isDelivery, pickupTime, address, values) {
     return true;
 }
 
-function saveOrder(values, isDelivery, pickupTime, address, onclient, distancia, taxaEntrega) {
+async function saveOrder(values, isDelivery, pickupTime, address, onclient, distancia, taxaEntrega) {
     const total = Object.entries(quantities).reduce((sum, [id, qty]) => {
         if (qty > 0) {
             const product = products.find(p => p.id === parseInt(id));
@@ -324,6 +318,7 @@ function saveOrder(values, isDelivery, pickupTime, address, onclient, distancia,
         }
         return sum;
     }, 0);
+
     const order = {
         id: Date.now(),
         time: new Date().toISOString().replace('Z', '-04:00'),
@@ -340,42 +335,105 @@ function saveOrder(values, isDelivery, pickupTime, address, onclient, distancia,
         deliveryFee: isDelivery ? taxaEntrega : 0,
         status: 'Aguardando'
     };
-    let orders = JSON.parse(localStorage.getItem('orders') || '[]');
-    orders.push(order);
-    localStorage.setItem('orders', JSON.stringify(orders));
-    localStorage.setItem('order-client', JSON.stringify(order));
-    quantities = {};
-    renderProducts();
-    renderClientOrder();
+
+    try {
+        // Envia o pedido para a API
+        const response = await fetch(`${apiUrl}/api/orders`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(order)
+        });
+
+        if (!response.ok) {
+            throw new Error(`Erro ao salvar pedido: ${response.status} - ${response.statusText}`);
+        }
+
+        // Salva no localStorage
+        let orders = JSON.parse(localStorage.getItem('orders') || '[]');
+        orders.push(order);
+        localStorage.setItem('orders', JSON.stringify(orders));
+
+        // Padronização: Salva usando a mesma chave que será lida depois
+        localStorage.setItem('order-client', JSON.stringify(order));
+        saveClientOrderToStorage(order); // Esta função salva em 'clientOrder'
+
+        quantities = {};
+        renderProducts();
+        renderClientOrder();
+
+        alert('Pedido realizado com sucesso!');
+    } catch (error) {
+        console.error('Erro ao salvar pedido:', error);
+        alert('Não foi possível enviar o pedido. Tente novamente mais tarde.');
+    }
 }
 
-function renderClientOrder() {
-    const clientOrder = JSON.parse(localStorage.getItem('order-client') || 'null');
+// Função auxiliar modificada para manter consistência
+function saveClientOrderToStorage(order) {
+    localStorage.setItem('clientOrder', JSON.stringify({
+        id: order.id,
+        phone: order.phone,
+        // Adicionando mais dados para facilitar o acesso
+        name: order.name,
+        status: order.status
+    }));
+}
+
+// Função auxiliar modificada para manter consistência
+function getClientOrderFromStorage() {
+    const order = localStorage.getItem('clientOrder') || localStorage.getItem('order-client');
+    return order ? JSON.parse(order) : null;
+}
+
+async function renderClientOrder() {
     const clientOrderDiv = document.getElementById('clientOrder');
-    if (!clientOrderDiv || clientOrder === null) {
+    if (!clientOrderDiv) return;
+
+    const clientOrder = getClientOrderFromStorage();
+    if (!clientOrder || !clientOrder.id || !clientOrder.phone) {
         clientOrderDiv.innerHTML = '<p>Nenhum pedido encontrado para você.</p>';
         return;
     }
-    if (!clientOrder.total) {
-        clientOrder.total = calculateOrderTotal(clientOrder.items);
-        localStorage.setItem('order-client', JSON.stringify(clientOrder));
+
+    try {
+        const response = await fetch(`${apiUrl}/api/client?id=${clientOrder.id}&phone=${clientOrder.phone}`);
+        if (!response.ok) throw new Error('Erro ao buscar pedido');
+
+        const result = await response.json();
+        if (!result.success || !result.data) {
+            throw new Error(result.message || 'Pedido não encontrado');
+        }
+
+        const order = result.data;
+        const deliveryFee = order.deliveryFee || 0; // Garante que terá um valor padrão
+        const totalWithDelivery = (order.total + deliveryFee).toFixed(2);
+
+        clientOrderDiv.innerHTML = `
+            <div class="border p-4 rounded-lg bg-gray-50">
+                <h2 class="text-xl font-bold mb-2">Seu Pedido</h2>
+                <p><strong>ID:</strong> ${order.id}</p>
+                <p><strong>Horário:</strong> ${new Date(order.time).toLocaleString('pt-BR')}</p>
+                <p><strong>Tipo:</strong> ${order.delivery ? 'Entrega' : 'Retirada'}${order.pickupTime ? ` (${order.pickupTime})` : ''}</p>
+                ${order.address ? `
+                    <p><strong>Endereço:</strong> ${order.address.address}, ${order.address.number}${order.address.neighborhood ? `, ${order.address.neighborhood}` : ''}</p>
+                ` : ''}
+                <p><strong>Pagamento:</strong> ${order.paymentMethod}</p>
+                <p><strong>Itens:</strong> ${order.items.map(i => {
+            const product = products.find(p => p.id === i.id);
+            return `${product ? product.name : 'Produto não encontrado'} (x${i.qty})`;
+        }).join(', ')}</p>
+                <p><strong>Valor dos Itens:</strong> R$ ${order.total.toFixed(2)}</p>
+                ${order.delivery ? `<p><strong>Taxa de Entrega:</strong> R$ ${deliveryFee.toFixed(2)}</p>` : ''}
+                <p class="font-bold"><strong>Valor Total:</strong> R$ ${totalWithDelivery}</p>
+                <p class="mt-2"><strong>Status:</strong> <span class="font-semibold">${order.status}</span></p>
+            </div>
+        `;
+    } catch (error) {
+        console.error('Erro ao carregar pedido:', error);
+        clientOrderDiv.innerHTML = '<p class="text-red-500">Não foi possível carregar seu pedido. Tente recarregar a página.</p>';
     }
-    const totalWithDelivery = (clientOrder.total + (clientOrder.deliveryFee || 0)).toFixed(2);
-    clientOrderDiv.innerHTML = `
-        <h2 class="text-xl font-bold mb-2">Seu Pedido</h2>
-        <p><strong>ID:</strong> ${clientOrder.id}</p>
-        <p><strong>Horário:</strong> ${new Date(clientOrder.time).toLocaleString('pt-BR')}</p>
-        <p><strong>Tipo:</strong> ${clientOrder.delivery ? 'Entrega' : 'Retirada'}${clientOrder.pickupTime ? ` (${clientOrder.pickupTime})` : ''}</p>
-        ${clientOrder.address ? `
-            <p><strong>Endereço:</strong> ${clientOrder.address.address}, ${clientOrder.address.number}${clientOrder.address.neighborhood !== 'Bairro não identificado' ? `, ${clientOrder.address.neighborhood}` : ''}</p>
-        ` : ''}
-        <p><strong>Pagamento:</strong> ${clientOrder.paymentMethod}</p>
-        <p><strong>Itens:</strong> ${clientOrder.items.map(i => `${products.find(p => p.id === i.id)?.name || 'Produto não encontrado'} (x${i.qty})`).join(', ') || 'N/A'}</p>
-        <p><strong>Valor dos Itens:</strong> R$ ${clientOrder.total.toFixed(2)}</p>
-        ${clientOrder.deliveryFee ? `<p><strong>Taxa de Entrega:</strong> R$ ${clientOrder.deliveryFee.toFixed(2)}</p>` : ''}
-        <p><strong>Valor Total:</strong> R$ ${totalWithDelivery}</p>
-        <p><strong>Status:</strong> ${clientOrder.status}</p>
-    `;
 }
 
 const bc = new BroadcastChannel('order_updates');

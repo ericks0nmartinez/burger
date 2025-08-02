@@ -3,17 +3,19 @@ let products = [];
 let cashRegisterOpen = JSON.parse(localStorage.getItem('cashRegisterOpen') || 'false');
 let cashRegisterOpenTime = localStorage.getItem('cashRegisterOpenTime') || null;
 let config = {};
+const apiUrl = "http://192.168.1.67:3000";
 
 async function loadConfig() {
     try {
-        const response = await fetch('../utils/config.json');
+        const response = await fetch(`${apiUrl}/api/config`);
         if (!response.ok) {
             throw new Error(`Erro ao carregar configuração: ${response.status} - ${response.statusText}`);
         }
-        config = await response.json();
+        const result = await response.json();
+        config = result.data || {};
     } catch (error) {
-        console.error('Erro ao carregar config.json:', error);
-        alert('Não foi possível carregar a configuração. Verifique o arquivo config.json.');
+        console.error('Erro ao carregar configuração:', error);
+        alert('Não foi possível carregar a configuração. Verifique a conexão com a API.');
         config = {
             PAYMENT_METHODS: ['Selecione', 'Dinheiro', 'PIX', 'Cartão Débito', 'Cartão Crédito'],
             DEBIT_CARD_FEE_RATE: 0.02,
@@ -236,13 +238,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadConfig();
     async function loadOrders() {
         try {
-            console.log('Starting to load products from products.json');
-            const productsResponse = await fetch('../utils/products.json');
+            console.log('Starting to load products from API');
+            const productsResponse = await fetch(`${apiUrl}/api/products/burgers`);
             if (!productsResponse.ok) {
                 throw new Error(`Erro ao carregar produtos: ${productsResponse.status} - ${productsResponse.statusText}`);
             }
             const productsData = await productsResponse.json();
-            products = Array.isArray(productsData) ? productsData.map(p => ({ ...p, status: p.status || 'Ativo' })) : [];
+            products = Array.isArray(productsData.data) ? productsData.data.map(p => ({ ...p, status: p.status || 'Ativo' })) : [];
             console.log('Products loaded successfully:', products.length);
 
             console.log('Starting to load orders from pedidos.json');
@@ -256,8 +258,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const uniqueIds = new Set(controlOrders.map(o => o.id));
             if (uniqueIds.size < controlOrders.length) {
-                console.warn('Duplicate order IDs detected in pedidos.json. Consider assigning unique IDs to each order.');
+                console.warn('Duplicate order IDs detected in pedidos.json');
             }
+
             controlOrders.forEach(order => {
                 if (typeof order.time === 'string' && order.time.includes('/')) {
                     const [datePart, timePart] = order.time.split(', ');
@@ -267,18 +270,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
                 if (!order.statusHistory || Object.keys(order.statusHistory).length === 0) {
                     order.statusHistory = { [order.status]: { start: order.time, end: null } };
-                } else {
-                    for (let status in order.statusHistory) {
-                        if (typeof order.statusHistory[status].start === 'string' && order.statusHistory[status].start.includes('/')) {
-                            const [datePart, timePart] = order.statusHistory[status].start.split(', ');
-                            const [day, month, year] = datePart.split('/').map(Number);
-                            const [hours, minutes, seconds] = timePart.split(':').map(Number);
-                            order.statusHistory[status].start = new Date(year, month - 1, day, hours, minutes, seconds).toISOString().replace('Z', '-04:00');
-                        }
-                    }
-                    if (!order.statusHistory[order.status]) {
-                        order.statusHistory[order.status] = { start: new Date().toISOString().replace('Z', '-04:00'), end: null };
-                    }
                 }
                 if (!order.total) {
                     order.total = order.items.reduce((sum, item) => {
@@ -288,44 +279,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
                 order.payment = order.payment || false;
             });
-            console.log('controlOrders processed:', controlOrders.length);
 
-            if (!document.getElementById('monthFilter') || !document.getElementById('dayFilter') || !document.getElementById('orderTable')) {
-                console.error('One or more required DOM elements (monthFilter, dayFilter, orderTable) are missing');
-                return;
-            }
-
-            console.log('Populating month filter');
             populateMonthFilter(controlOrders);
-            console.log('Populating day filter');
             populateDayFilter(controlOrders, '');
-            console.log('Rendering orders');
             renderOrders();
-
-            const monthFilter = document.getElementById('monthFilter');
-            const dayFilter = document.getElementById('dayFilter');
-            if (monthFilter) {
-                monthFilter.addEventListener('change', (e) => {
-                    console.log('Month filter changed to:', e.target.value);
-                    populateDayFilter(controlOrders, e.target.value);
-                    renderOrders();
-                });
-            } else {
-                console.error('monthFilter element not found during event listener setup');
-            }
-            if (dayFilter) {
-                dayFilter.addEventListener('change', () => {
-                    console.log('Day filter changed to:', dayFilter.value);
-                    renderOrders();
-                });
-            } else {
-                console.error('dayFilter element not found during event listener setup');
-            }
         } catch (error) {
             console.error('Erro:', error);
-            alert('Não foi possível carregar os dados. Verifique os arquivos products.json e pedidos.json.');
+            alert('Não foi possível carregar os dados. Verifique a conexão com a API.');
         }
     }
+
 
     loadOrders();
 });

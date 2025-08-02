@@ -2,22 +2,41 @@ let products = [];
 let quantities = {};
 let selectedTable = null;
 let config = {};
+const apiUrl = "http://192.168.1.67:3000";
 
 async function loadConfig() {
     try {
-        const response = await fetch('../utils/config.json');
+        const response = await fetch(`${apiUrl}/api/config`);
         if (!response.ok) {
             throw new Error(`Erro ao carregar configuração: ${response.status} - ${response.statusText}`);
         }
-        config = await response.json();
+        const result = await response.json();
+        config = result.data || {};
     } catch (error) {
-        console.error('Erro ao carregar config.json:', error);
-        alert('Não foi possível carregar a configuração. Verifique o arquivo config.json.');
+        console.error('Erro ao carregar configuração:', error);
+        alert('Não foi possível carregar a configuração. Verifique a conexão com a API.');
         config = {
             PAYMENT_METHODS: ['Selecione', 'Dinheiro', 'PIX', 'Cartão Débito', 'Cartão Crédito'],
             DELIVERY_FEE: 10.0,
             TABLE_COUNT: 6
         };
+    }
+}
+
+async function fetchProducts() {
+    try {
+        const response = await fetch(`${apiUrl}/api/products/burgers`);
+        if (!response.ok) {
+            throw new Error(`Erro ao carregar produtos: ${response.status} - ${response.statusText}`);
+        }
+        const result = await response.json();
+        products = Array.isArray(result.data) ? result.data.filter(p => p.status === 'Ativo').map(p => ({ ...p, status: p.status || 'Ativo' })) : [];
+        renderProducts();
+    } catch (error) {
+        console.error('Erro:', error);
+        alert('Não foi possível carregar os produtos. Verifique a conexão com a API.');
+        products = [];
+        renderProducts();
     }
 }
 
@@ -32,26 +51,6 @@ function initializeTables() {
         return newTables;
     }
     return tables;
-}
-
-async function fetchProducts() {
-    try {
-        const response = await fetch('../utils/products.json');
-        if (!response.ok) {
-            throw new Error(`Erro ao carregar produtos: ${response.status} - ${response.statusText}`);
-        }
-        const data = await response.json();
-        if (!Array.isArray(data)) {
-            throw new Error('Dados de produtos não estão em formato de array');
-        }
-        products = data.filter(p => p.status === 'Ativo').map(p => ({ ...p, status: p.status || 'Ativo' }));
-        renderProducts();
-    } catch (error) {
-        console.error('Erro:', error);
-        alert('Não foi possível carregar os produtos. Verifique o arquivo products.json.');
-        products = [];
-        renderProducts();
-    }
 }
 
 function renderTableCards() {

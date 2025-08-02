@@ -1,14 +1,15 @@
 let controlOrders = [];
 let products = {};
+const apiUrl = "http://192.168.1.67:3000";
 
 async function fetchProducts() {
     try {
-        const response = await fetch('../utils/products.json');
+        const response = await fetch(`${apiUrl}/api/products/burgers`);
         if (!response.ok) {
-            throw new Error(`Erro ao carregar produtos: ${response.status}`);
+            throw new Error(`Erro ao carregar produtos: ${response.status} - ${response.statusText}`);
         }
-        const productsData = await response.json();
-        return productsData.reduce((acc, p) => ({ ...acc, [p.id]: { name: p.name, price: p.price || 0 } }), {});
+        const result = await response.json();
+        return Array.isArray(result.data) ? result.data.reduce((acc, p) => ({ ...acc, [p.id]: { name: p.name, price: p.price || 0 } }), {}) : {};
     } catch (error) {
         console.error('Erro ao carregar produtos:', error);
         return {};

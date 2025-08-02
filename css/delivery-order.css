@@ -1,39 +1,122 @@
-/* Tailwind CSS is included via CDN, adding custom styles */
-body {
-    font-family: 'Inter', sans-serif;
-}
-
-table {
+/* Estilos da tabela de entregas */
+#deliveryOrders table {
     width: 100%;
     border-collapse: collapse;
 }
 
-th,
-td {
-    text-align: left;
-    padding: 8px;
-}
-
-thead {
-    background-color: #f9fafb;
-}
-
-tbody tr:hover {
+#deliveryOrders th {
     background-color: #f3f4f6;
+    text-align: left;
+    padding: 12px 16px;
+    font-weight: 600;
 }
 
-button {
-    transition: background-color 0.2s;
+#deliveryOrders td {
+    padding: 12px 16px;
+    border-bottom: 1px solid #e5e7eb;
 }
 
-@media (max-width: 640px) {
-    table {
+/* Accordion styles */
+.accordion-details {
+    transition: all 0.3s ease;
+}
+
+.accordion-details.hidden {
+    display: none;
+}
+
+/* Botões e interações */
+button:hover {
+    transform: translateY(-1px);
+    transition: transform 0.2s;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    #deliveryOrders table {
         display: block;
         overflow-x: auto;
     }
 
-    th,
-    td {
-        min-width: 100px;
+    #deliveryOrders th,
+    #deliveryOrders td {
+        padding: 8px 12px;
+        font-size: 0.875rem;
     }
+}
+
+/* Efeito de atualização */
+@keyframes highlight {
+    from {
+        background-color: #d1fae5;
+    }
+
+    to {
+        background-color: transparent;
+    }
+}
+
+.updated-row {
+    animation: highlight 2s;
+}
+
+/* Modal styles */
+#productModal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content {
+    background-color: white;
+    padding: 2rem;
+    border-radius: 0.5rem;
+    width: 90%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+/* Garante que o modal está acima de tudo */
+#productModal {
+    z-index: 9999;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: none;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Animações suaves */
+.bg-green-50 {
+    transition: background-color 0.5s ease;
+}
+
+/* Estilo para o container de erro */
+#modalError {
+    transition: all 0.3s ease;
+    max-height: 0;
+    overflow: hidden;
+}
+
+#modalError.show {
+    max-height: 200px;
 }
