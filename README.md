@@ -5,7 +5,7 @@ Graficos:
 
 
 adimin-order
-* (Feito) mostrar apenas valores do caixa do dia atual
+* (feito) mostrar apenas valores do caixa do dia atual
 
 * (feito) Abertura e fechar caixa: ja tem o controle dos pedidos, mas a abertura de caixa deve, controlar os pedidos do garçom e pelo site, isso irá mostrar o toda de entradas de pedidos e valores recebidos.
 
@@ -13,9 +13,12 @@ adimin-order
 
 * A quatidade de mesas deve aparece para o garçom, que também terá a possibilidade de definir um botão + para nomear , exemplo carro, casa, isso é para os clientes que pedem e não sentam em mesas.
 
-* mostrar o contador de tempo ja na tela e não só apos mudar de status
+* (feito) Não é para mostrar hora  e sim quando tempo no status mostrar o contador de tempo ja na tela e não só apos mudar de status
 
 witer-order
+
+* Garçom salvar no banco o pedido
+
 * Garçom: A quatidade de mesas deve aparece para o garçom, que também terá a possibilidade de definir um botão + para nomear , exemplo carro, casa, isso é para os clientes que pedem e não sentam em mesas.
 
 * (feito)Após clicar nas mesas disponiveis ou clicar no + e definir o nome o garçom vera a lista de lanches permitindo escolher e enviar o pedido para o caixa admin-order
@@ -23,6 +26,8 @@ witer-order
 * Quando passar  mouse ou clicar na imagem deve expandir a imagem do lanche
 
 admin-control
+* usar Orders mostrando o dia atual mas permitindo que usuario selecione outro dia
+
 * permitir que o usuario selecione dias diferentes para visualizr os pedidos do dia selecionado
 
 * mostrar o contador de tempo ja na tela e não só apos mudar de status
@@ -38,6 +43,6 @@ client-order
 Corrigir
 
 admin-order
-Ajustar pagamento se tiver pago some o botão pago
+(feito)Ajustar pagamento se tiver pago some o botão pago
 
-Tem que criar controlOrdersControllers deleveryOrdersControllers para enviar após mudar os status
+Usar orders no dashboard e admin-control

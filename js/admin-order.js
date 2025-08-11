@@ -1,6 +1,6 @@
-
 let orders = [];
 let products = [];
+const LOCAL_TIMEZONE_OFFSET = -10; // Horário de Brasília (GMT-3)
 let cashRegisterOpen = JSON.parse(localStorage.getItem('cashRegisterOpen') || 'false');
 let cashRegisterOpenTime = localStorage.getItem('cashRegisterOpenTime') || null;
 let config = {};
@@ -119,7 +119,7 @@ async function markAsReceived(orderId) {
 
             // Atualiza localmente
             order.payment = true;
-            order.receivedTime = new Date().toISOString().replace('Z', '-04:00');
+            order.receivedTime = getLocalDateTimeString();
             order.statusHistory['Recebido'] = { start: order.receivedTime, end: null };
 
             // Se for pedido do cliente, atualiza também no OrderClient
@@ -254,12 +254,12 @@ async function updateStatus(orderId, newStatus) {
 
         // Atualiza localmente
         if (order.statusHistory[order.status] && !order.statusHistory[order.status].end) {
-            order.statusHistory[order.status].end = new Date().toISOString();
+            order.statusHistory[order.status].end = getLocalDateTimeString();
         }
 
         order.statusHistory[newStatus] = {
-            start: new Date().toISOString(),
-            end: newStatus === 'Entregue' ? new Date().toISOString() : null
+            start: getLocalDateTimeString(),
+            end: newStatus === 'Entregue' ? getLocalDateTimeString() : null
         };
         order.status = newStatus;
 
@@ -480,13 +480,26 @@ function renderOrders() {
                 <div class="mt-4">
                     <h3 class="font-semibold mb-2">Histórico</h3>
                     <div class="bg-white p-3 rounded-md shadow">
-                        ${Object.entries(order.statusHistory).map(([status, { start, end }]) => `
-                            <p class="py-1 border-b last:border-b-0">
-                                <span class="font-medium">${status}:</span> 
-                                ${new Date(start).toLocaleString('pt-BR')} 
-                                ${end ? `→ ${new Date(end).toLocaleString('pt-BR')}` : ''}
-                            </p>
-                        `).join('')}
+                        ${Object.entries(order.statusHistory).map(([status, { start, end }]) => {
+            let durationStr = '';
+            if (end) {
+                const startDate = new Date(start);
+                const endDate = new Date(end);
+                const diffMs = endDate - startDate;
+                const diffSec = Math.floor(diffMs / 1000);
+                const min = Math.floor(diffSec / 60);
+                const sec = diffSec % 60;
+                durationStr = ` <span class="text-xs text-gray-500">(${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')})</span>`;
+            }
+            return `
+        <p class="py-1 border-b last:border-b-0">
+            <span class="font-medium">${status}:</span> 
+            ${new Date(start).toLocaleString('pt-BR')} 
+            ${end ? `→ ${new Date(end).toLocaleString('pt-BR')}` : ''}
+            ${durationStr}
+        </p>
+    `;
+        }).join('')}
                     </div>
                 </div>
                 ` : ''}
@@ -591,7 +604,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const [datePart, timePart] = order.time.split(', ');
                     const [day, month, year] = datePart.split('/').map(Number);
                     const [hours, minutes, seconds] = timePart.split(':').map(Number);
-                    order.time = new Date(year, month - 1, day, hours, minutes, seconds).toISOString().replace('Z', '-04:00');
+
+                    // Cria a data em UTC (como se fosse local)
+                    const utcDate = new Date(Date.UTC(year, month - 1, day, hours, minutes, seconds));
+                    // Ajusta para o fuso horário desejado
+                    utcDate.setHours(utcDate.getHours() + LOCAL_TIMEZONE_OFFSET - 1 - utcDate.getTimezoneOffset() / 60);
+                    // Salva no formato local correto
+                    const pad = n => n.toString().padStart(2, '0');
+                    order.time = `${utcDate.getFullYear()}-${pad(utcDate.getMonth() + 1)}-${pad(utcDate.getDate())} ${pad(utcDate.getHours())}:${pad(utcDate.getMinutes())}:${pad(utcDate.getSeconds())}`;
                 }
 
                 // Inicializa statusHistory se não existir
@@ -609,6 +629,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 // Garante que payment existe
                 order.payment = order.payment || false;
+            });
+
+            // FILTRA APENAS PEDIDOS DO DIA ATUAL
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const tomorrow = new Date(today);
+            tomorrow.setDate(today.getDate() + 1);
+
+            orders = orders.filter(order => {
+                const orderDate = new Date(order.time);
+                return orderDate >= today && orderDate < tomorrow;
             });
 
             // Atualiza localStorage (opcional)
@@ -632,3 +663,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     loadOrders();
 });
+
+function getLocalDateTimeString() {
+    const now = new Date();
+    now.setHours(now.getHours() + LOCAL_TIMEZONE_OFFSET - now.getTimezoneOffset() / 60);
+    const pad = n => n.toString().padStart(2, '0');
+    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+}

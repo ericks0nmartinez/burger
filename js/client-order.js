@@ -2,6 +2,7 @@ let products = [];
 let quantities = {};
 let config = {};
 const apiUrl = "http://192.168.1.67:3000";
+const LOCAL_TIMEZONE_OFFSET = -10; // Horário de Brasília (GMT-3). Ajuste conforme necessário.
 
 async function loadConfig() {
     try {
@@ -319,9 +320,15 @@ async function saveOrder(values, isDelivery, pickupTime, address, onclient, dist
         return sum;
     }, 0);
 
+    // Gera a data/hora local correta
+    const now = new Date();
+    now.setHours(now.getHours() + LOCAL_TIMEZONE_OFFSET - now.getTimezoneOffset() / 60);
+    const pad = n => n.toString().padStart(2, '0');
+    const localTime = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+
     const order = {
         id: Date.now(),
-        time: new Date().toISOString().replace('Z', '-04:00'),
+        time: localTime, // <-- agora salva no horário local correto
         name: values.name,
         phone: values.phone,
         onclient,
