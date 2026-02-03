@@ -1,6 +1,6 @@
 let controlOrders = [];
 let products = {};
-const apiUrl = "http://192.168.1.67:3000";
+const apiUrl = "https://stok-5ytv.onrender.com";
 
 async function fetchProducts() {
     try {
