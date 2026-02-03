@@ -1,7 +1,7 @@
 
 let products = [];
 let deliveryOrders = [];
-const apiUrl = "http://192.168.1.67:3000";
+const apiUrl = "https://stok-5ytv.onrender.com";
 
 // Carrega produtos
 async function fetchProducts() {
