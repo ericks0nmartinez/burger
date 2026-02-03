@@ -4,7 +4,7 @@ const LOCAL_TIMEZONE_OFFSET = -10; // Horário de Brasília (GMT-3)
 let cashRegisterOpen = JSON.parse(localStorage.getItem('cashRegisterOpen') || 'false');
 let cashRegisterOpenTime = localStorage.getItem('cashRegisterOpenTime') || null;
 let config = {};
-const apiUrl = "http://192.168.1.67:3000";
+const apiUrl = "https://stok-5ytv.onrender.com";
 
 async function loadConfig() {
     try {
