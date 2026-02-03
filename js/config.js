@@ -1,7 +1,7 @@
 
 
 let config = {};
-const url = "http://192.168.1.67:3000"
+const url = "https://stok-5ytv.onrender.com"
 
 // Fetch config from API
 async function loadConfig() {
