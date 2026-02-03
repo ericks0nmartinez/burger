@@ -2,7 +2,7 @@ let products = [];
 let quantities = {};
 let selectedTable = null;
 let config = {};
-const apiUrl = "http://192.168.1.67:3000";
+const apiUrl = "https://stok-5ytv.onrender.com";
 
 async function loadConfig() {
     try {
